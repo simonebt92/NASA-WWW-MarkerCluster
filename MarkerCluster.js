@@ -3,7 +3,6 @@ define(function () {
     var MarkerCluster = function (wwd) {
         this.placemarks = [];
         this.layer = new WorldWind.RenderableLayer("MarkerCluster");
-
         if (wwd) {
             wwd.addLayer(this.layer);
         }
@@ -14,15 +13,20 @@ define(function () {
         this.layer = layer;
     };
 
-    MarkerCluster.prototype.addPlacemark = function (placemark) {
-        this.layer.addRenderable(placemark);
-        this.placemarks.push(placemark);
+    MarkerCluster.prototype.add = function (placemark) {
+        if (Object.prototype.toString.call(placemark) === '[object Array]') {
+            var self = this;
+            placemark.forEach(function (place) {
+                self.layer.addRenderable(place);
+                self.placemarks.push(place);
+            })
+        } else {
+            this.layer.addRenderable(placemark);
+            this.placemarks.push(placemark);
+        }
     };
 
-    MarkerCluster.prototype.newPlacemark = function (coordinates, placemarkAttributes, options) {
-        if (!coordinates) {
-            throw ("No coordinates provided");
-        }
+    MarkerCluster.prototype.generatePlacemarks = function (coordinates, placemarkAttributes, options) {
         var lat, lng, alt;
         if (coordinates[0] && coordinates[1]) {
             lat = coordinates[0];
@@ -59,10 +63,27 @@ define(function () {
         placemark.label = options.label ? options.label : "MyMarker " + lat + " - " + lng;
         placemark.altitudeMode = options.altitudeMode ? options.altitudeMode : WorldWind.RELATIVE_TO_GROUND;
         placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
-        placemarkAttributes.imageSource = options.imageSource ? options.imageSource : "images/pushpins/plain-blue.png";
+        placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/plain-blue.png";
         placemark.attributes = placemarkAttributes;
 
-        this.addPlacemark(placemark);
+        return placemark;
+    };
+
+    MarkerCluster.prototype.newPlacemark = function (coordinates, placemarkAttributes, options) {
+        if (!coordinates) {
+            throw ("No coordinates provided");
+        }
+        var placemark;
+        if (typeof (coordinates[0]) == "object") {
+            placemark = [];
+            for (var index in coordinates) {
+                placemark.push(this.generatePlacemarks(coordinates[index]));
+            }
+        } else {
+            placemark = this.generatePlacemarks(coordinates, placemarkAttributes, options)
+        }
+
+        return placemark;
     };
 
     MarkerCluster.prototype.removePlacemark = function (placemark) {

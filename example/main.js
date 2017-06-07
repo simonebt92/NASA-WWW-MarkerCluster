@@ -3,13 +3,13 @@ var markerCluster;
 var cluster;
 var layerManager;
 requirejs(['../libraries/WorldWind/WorldWind',
-        'js/LayerManager', '../scripts/MarkerCluster'],
+        'js/LayerManager', '../MarkerCluster'],
     function (ww,
               LayerManager, MarkerCluster) {
         "use strict";
 
         WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
-
+        WorldWind.configuration.baseUrl = "../libraries/WorldWind/"
         wwd = new WorldWind.WorldWindow("canvasOne");
 
         var layers = [
@@ -21,15 +21,25 @@ requirejs(['../libraries/WorldWind/WorldWind',
 
         for (var l = 0; l < layers.length; l++) {
             layers[l].layer.enabled = layers[l].enabled;
-            layers[l].layer.detailControl = 1;
+            layers[l].layer.detailControl = 5;
             wwd.addLayer(layers[l].layer);
         }
 
 
+        //create a cluster
         markerCluster = new MarkerCluster(wwd);
-        markerCluster.newPlacemark([37, 15]);
-        layerManager = new LayerManager(wwd);
 
+        //create a placemark
+        var placemark = markerCluster.newPlacemark([37, 15]);
+        markerCluster.add(placemark);
+
+        //create multiple placemark
+        var placemarks = markerCluster.newPlacemark([[37, 14],[36, 15]]);
+        markerCluster.add(placemarks);
+
+
+
+        layerManager = new LayerManager(wwd);
         wwd.navigator.lookAtLocation.latitude = 37;
         wwd.navigator.lookAtLocation.longitude = 15;
 
