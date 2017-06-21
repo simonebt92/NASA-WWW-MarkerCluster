@@ -28,41 +28,48 @@ requirejs(['../libraries/WorldWind/WorldWind',
 
         //create a cluster
         markerCluster = new MarkerCluster(wwd);
+        /*
+         //create a placemark
+         var placemark = markerCluster.newPlacemark([37, 15]);
+         markerCluster.add(placemark);
 
-        //create a placemark
-        var placemark = markerCluster.newPlacemark([37, 15]);
-        markerCluster.add(placemark);
+         //hide a placemark
+         markerCluster.hide(placemark);
 
-        //create multiple placemark
-        var placemarks = markerCluster.newPlacemark([[37, 14],[36, 15]]);
-        markerCluster.add(placemarks);
+         //show a placemark
+         markerCluster.show(placemark);
 
-
+         //create multiple placemark
+         var placemarks = markerCluster.newPlacemark([[37, 14], [36, 15]]);
+         markerCluster.add(placemarks);
+         */
 
         layerManager = new LayerManager(wwd);
         wwd.navigator.lookAtLocation.latitude = 37;
         wwd.navigator.lookAtLocation.longitude = 15;
 
-
         /*
          getJSON('places.json', function (geojson) {
 
-         cluster = supercluster({
-         log: true,
-         radius: 60,
-         extent: 256,
-         maxZoom: 17
-         }).load(geojson.features);
+         //markerCluster.generateJSONCluster(geojson);
 
-         var res = cluster.getClusters([-360, -90, 360, 90], 0);
-
-         res.forEach(function (f) {
-         markerCluster.newPlacemark(f.geometry.coordinates);
+         geojson.features.forEach(function (f) {
+         var coords = f.geometry.coordinates;
+         var p = markerCluster.newPlacemark([coords[0], coords[1]], null, {enabled: false});
+         markerCluster.add(p);
          });
 
-
+         markerCluster.generateCluster();
          });
          */
+
+        for (var x = -100; x < 100; x++) {
+            for (var y = -90; y < 90; y++) {
+                var p = markerCluster.newPlacemark([x, y], null, {enabled: false});
+                markerCluster.add(p);
+            }
+        }
+        markerCluster.generateCluster();
 
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
