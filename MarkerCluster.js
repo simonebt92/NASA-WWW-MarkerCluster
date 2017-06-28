@@ -4,6 +4,7 @@ requirejs.config({
         supercluster: '../supercluster.min',
     }
 });
+
 define(['supercluster'], function (supercluster) {
 
     var MarkerCluster = function (wwd, markers, options) {
@@ -28,7 +29,7 @@ define(['supercluster'], function (supercluster) {
             });
             this.generateCluster();
         }
-       // this.ranges = [10000000, 5000000, 1000000, 500000, 100000, 50000, 20000, 3000, 1000];
+        // this.ranges = [10000000, 5000000, 1000000, 500000, 100000, 50000, 20000, 3000, 1000];
         this.ranges = [100000000, 50000000, 10000000, 5000000, 1000000, 500000, 200000, 30000, 10000];
         this.bindNavigator();
     };
@@ -40,42 +41,77 @@ define(['supercluster'], function (supercluster) {
         var ranges = this.ranges;
         var self = this;
 
+        function convertToRange(value, srcRange, dstRange) {
+            // value is outside source range return
+            if (value < srcRange[0]) {
+                return dstRange[0];
+            }
+            if (value > srcRange[1]) {
+                return dstRange[1];
+
+            }
+
+            var srcMax = srcRange[1] - srcRange[0],
+                dstMax = dstRange[1] - dstRange[0],
+                adjValue = value - srcRange[0];
+
+            return (adjValue * dstMax / srcMax) + dstRange[0];
+
+        }
+
         navigator.handleWheelEvent = function (event) {
             LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
             var range = this.range;
+
             self.hideAll();
-            switch (true) {
-                case (range > ranges[0]):
-                    self.showZoomLevel(0);
-                    break;
-                case  (range > ranges[1] && range < ranges[0]):
-                    self.showZoomLevel(1);
-                    break;
-                case  (range > ranges[2] && range < ranges[1]):
-                    self.showZoomLevel(2);
-                    break;
-                case  (range > ranges[3] && range < ranges[2]):
-                    self.showZoomLevel(3);
-                    break;
-                case  (range > ranges[4] && range < ranges[3]):
-                    self.showZoomLevel(4);
-                    break;
-                case  (range > ranges[5] && range < ranges[4]):
-                    self.showZoomLevel(5);
-                    break;
-                case  (range > ranges[6] && range < ranges[5]):
-                    self.showZoomLevel(6);
-                    break;
-                case  (range > ranges[7] && range < ranges[6]):
-                    self.showZoomLevel(7);
-                    break;
-                case  (range > ranges[8] && range < ranges[7]):
-                    self.showZoomLevel(8);
-                    break;
-                case (range < ranges[8]):
-                    self.showZoomLevel(9);
-                    break;
+            var res;
+            if (range > 10000) {
+                res = convertToRange(range, [10000, 6165728], [0, 16]);
+                res = Math.round(16 - res);
+            } else {
+                res = convertToRange(range, [500, 10000], [16, 23]);
+                res = Math.round(23 + 16 - res);
             }
+
+            res = Math.round(convertToRange(res, [0, 23], [0, 9]));
+
+            console.log(res);
+            self.showZoomLevel(res);
+            /*
+             switch (true) {
+             case (range > ranges[0]):
+             self.showZoomLevel(0);
+             break;
+             case  (range > ranges[1] && range < ranges[0]):
+             self.showZoomLevel(1);
+             break;
+             case  (range > ranges[2] && range < ranges[1]):
+             self.showZoomLevel(2);
+             break;
+             case  (range > ranges[3] && range < ranges[2]):
+             self.showZoomLevel(3);
+             break;
+             case  (range > ranges[4] && range < ranges[3]):
+             self.showZoomLevel(4);
+             break;
+             case  (range > ranges[5] && range < ranges[4]):
+             self.showZoomLevel(5);
+             break;
+             case  (range > ranges[6] && range < ranges[5]):
+             self.showZoomLevel(6);
+             break;
+             case  (range > ranges[7] && range < ranges[6]):
+             self.showZoomLevel(7);
+             break;
+             case  (range > ranges[8] && range < ranges[7]):
+             self.showZoomLevel(8);
+             break;
+             case (range < ranges[8]):
+             self.showZoomLevel(9);
+             break;
+             }
+             */
+
         };
 
 
@@ -123,7 +159,7 @@ define(['supercluster'], function (supercluster) {
             var res = cluster.getClusters([-180, -90, 180, 90], y);
             var self = this;
             res.forEach(function (f) {
-                var p = self.newPlacemark(f.geometry.coordinates, null, {enabled: false, label:"Level: "+y});
+                var p = self.newPlacemark(f.geometry.coordinates, null, {enabled: false, label: "Level: " + y});
                 self.add(p);
                 self.addToZoom(y, p.index);
             });
@@ -244,15 +280,18 @@ define(['supercluster'], function (supercluster) {
     };
 
     MarkerCluster.prototype.hideZoomLevel = function (zoomLevel) {
-        for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-            this.hide(this.placemarks[this.levels[zoomLevel][x]]);
+        if (this.levels[zoomLevel]) {
+            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
+                this.hide(this.placemarks[this.levels[zoomLevel][x]]);
+            }
         }
     };
 
     MarkerCluster.prototype.showZoomLevel = function (zoomLevel) {
-
-        for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-            this.show(this.placemarks[this.levels[zoomLevel][x]]);
+        if (this.levels[zoomLevel]) {
+            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
+                this.show(this.placemarks[this.levels[zoomLevel][x]]);
+            }
         }
     };
 
@@ -262,5 +301,6 @@ define(['supercluster'], function (supercluster) {
         this.placemarks.splice(this.placemarks.indexOf(placemark));
     };
     return MarkerCluster;
-});
+})
+;
 
