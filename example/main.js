@@ -48,29 +48,30 @@ requirejs(['../libraries/WorldWind/WorldWind',
         wwd.navigator.lookAtLocation.latitude = 37;
         wwd.navigator.lookAtLocation.longitude = 15;
 
-        /*
-         getJSON('places.json', function (geojson) {
 
-         //markerCluster.generateJSONCluster(geojson);
+        getJSON('places.json', function (geojson) {
 
-         geojson.features.forEach(function (f) {
-         var coords = f.geometry.coordinates;
-         var p = markerCluster.newPlacemark([coords[0], coords[1]], null, {enabled: false});
-         markerCluster.add(p);
-         });
+           // markerCluster.generateJSONCluster(geojson);
+            /*
+             geojson.features.forEach(function (f) {
+             var coords = f.geometry.coordinates;
+             var p = markerCluster.newPlacemark([coords[0], coords[1]], null, {enabled: false});
+             markerCluster.add(p);
+             });
 
-         markerCluster.generateCluster();
-         });
-         */
+             markerCluster.generateCluster();
+             });
 
-        for (var x = -100; x < 100; x++) {
-            for (var y = -90; y < 90; y++) {
-                var p = markerCluster.newPlacemark([x, y], null, {enabled: false});
-                markerCluster.add(p);
-            }
-        }
-        markerCluster.generateCluster();
+*/
+             for (var x = -100; x < 100; x++) {
+             for (var y = -90; y < 90; y++) {
+             var p = markerCluster.newPlacemark([x, y], null, {enabled: false},{label:x+"_"+y});
+             markerCluster.add(p);
+             }
+             }
+             markerCluster.generateCluster();
 
+        });
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);

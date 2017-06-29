@@ -10,7 +10,7 @@ define(['supercluster'], function (supercluster) {
     var MarkerCluster = function (wwd, markers, options) {
         if (!options) {
             options = {
-                levels: 10
+                levels: 23
             }
         }
         this.placemarks = [];
@@ -20,6 +20,8 @@ define(['supercluster'], function (supercluster) {
         }
         this.zoomLevels = options.levels;
         this.levels = [];
+        this.maxReached = this.zoomLevels;
+        this.minReached = 0;
         this.createZoomClusters(this.zoomLevels);
 
         if (markers) {
@@ -29,8 +31,7 @@ define(['supercluster'], function (supercluster) {
             });
             this.generateCluster();
         }
-        // this.ranges = [10000000, 5000000, 1000000, 500000, 100000, 50000, 20000, 3000, 1000];
-        this.ranges = [100000000, 50000000, 10000000, 5000000, 1000000, 500000, 200000, 30000, 10000];
+        //this.ranges = [100000000, 50000000, 10000000, 5000000, 1000000, 500000, 200000, 30000, 10000];
         this.bindNavigator();
     };
 
@@ -38,11 +39,9 @@ define(['supercluster'], function (supercluster) {
 
         var navigator = wwd.navigator;
         var LookAtNavigator = WorldWind.LookAtNavigator;
-        var ranges = this.ranges;
         var self = this;
 
         function convertToRange(value, srcRange, dstRange) {
-            // value is outside source range return
             if (value < srcRange[0]) {
                 return dstRange[0];
             }
@@ -50,20 +49,17 @@ define(['supercluster'], function (supercluster) {
                 return dstRange[1];
 
             }
-
             var srcMax = srcRange[1] - srcRange[0],
                 dstMax = dstRange[1] - dstRange[0],
                 adjValue = value - srcRange[0];
-
             return (adjValue * dstMax / srcMax) + dstRange[0];
-
         }
 
         navigator.handleWheelEvent = function (event) {
             LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
             var range = this.range;
 
-            self.hideAll();
+
             var res;
             if (range > 10000) {
                 res = convertToRange(range, [10000, 6165728], [0, 16]);
@@ -73,45 +69,17 @@ define(['supercluster'], function (supercluster) {
                 res = Math.round(23 + 16 - res);
             }
 
-            res = Math.round(convertToRange(res, [0, 23], [0, 9]));
+            res = Math.round(convertToRange(res, [0, 23], [0, self.zoomLevels]));
 
             console.log(res);
-            self.showZoomLevel(res);
-            /*
-             switch (true) {
-             case (range > ranges[0]):
-             self.showZoomLevel(0);
-             break;
-             case  (range > ranges[1] && range < ranges[0]):
-             self.showZoomLevel(1);
-             break;
-             case  (range > ranges[2] && range < ranges[1]):
-             self.showZoomLevel(2);
-             break;
-             case  (range > ranges[3] && range < ranges[2]):
-             self.showZoomLevel(3);
-             break;
-             case  (range > ranges[4] && range < ranges[3]):
-             self.showZoomLevel(4);
-             break;
-             case  (range > ranges[5] && range < ranges[4]):
-             self.showZoomLevel(5);
-             break;
-             case  (range > ranges[6] && range < ranges[5]):
-             self.showZoomLevel(6);
-             break;
-             case  (range > ranges[7] && range < ranges[6]):
-             self.showZoomLevel(7);
-             break;
-             case  (range > ranges[8] && range < ranges[7]):
-             self.showZoomLevel(8);
-             break;
-             case (range < ranges[8]):
-             self.showZoomLevel(9);
-             break;
-             }
-             */
-
+            self.hideAll();
+            if (res < self.minReached) {
+                self.showZoomLevel(self.minReached);//possible overhead
+            }else if (res > self.maxReached) {
+                self.showZoomLevel(self.maxReached);
+            }else{
+                self.showZoomLevel(res);
+            }
         };
 
 
@@ -148,31 +116,46 @@ define(['supercluster'], function (supercluster) {
 
         cluster = supercluster({
             log: true,
-            radius: 60,
+            radius: 10060,//should be dynamic
             extent: 256,
-            maxZoom: 17
+            maxZoom: 23
         }).load(geojson.features);
 
         var end = this.zoomLevels;
 
-        for (var y = 0; y < end; y++) {
+        for (var y = 0; y <= end; y++) {
             var res = cluster.getClusters([-180, -90, 180, 90], y);
             var self = this;
-            res.forEach(function (f) {
-                var p = self.newPlacemark(f.geometry.coordinates, null, {enabled: false, label: "Level: " + y});
-                self.add(p);
-                self.addToZoom(y, p.index);
-            });
+
+            if (this.minReached == 0 && res.length > 0) {
+                this.minReached = y;
+            }
+            if (y > 0 && res.length > 0 && res.length == this.levels[y - 1].length) {
+                this.maxReached = y - 1;
+                break;
+            } else {
+                var label;
+                res.forEach(function (f) {
+
+                    if (f.properties.cluster) {
+                        label = "N." + f.properties.point_count;
+                    } else {
+                        label = f.properties.name;
+                    }
+                    var p = self.newPlacemark(f.geometry.coordinates, null, {enabled: false, label: label});
+                    self.add(p);
+                    self.addToZoom(y, p.index);
+                });
+            }
         }
     };
 
     MarkerCluster.prototype.createZoomClusters = function (n) {
-        for (var x = 0; x < n; x++) {
+        for (var x = 0; x <= n; x++) {
             this.levels[x] = [];
         }
         return this.levels;
     };
-
 
     MarkerCluster.prototype.addToZoom = function (zoom, index) {
         this.levels[zoom].push(index);
@@ -228,6 +211,8 @@ define(['supercluster'], function (supercluster) {
                 WorldWind.OFFSET_FRACTION, 0.5,
                 WorldWind.OFFSET_FRACTION, 1.0);
             placemarkAttributes.labelAttributes.color = WorldWind.Color.YELLOW;
+            placemarkAttributes.labelAttributes.font.size = 100;
+
         }
 
         var placemark = new WorldWind.Placemark(position, true, null);
@@ -236,6 +221,7 @@ define(['supercluster'], function (supercluster) {
         placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
         placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/plain-blue.png";
         placemark.attributes = placemarkAttributes;
+        placemark.eyeDistanceScalingLabelThreshold = 1e20;
 
         if (options.enabled == false) {
             placemark.enabled = false;
@@ -274,7 +260,7 @@ define(['supercluster'], function (supercluster) {
 
 
     MarkerCluster.prototype.hideAll = function () {
-        for (var x = 0; x < this.zoomLevels; x++) {
+        for (var x = 0; x <= this.zoomLevels && x < this.maxReached; x++) {
             this.hideZoomLevel(x);
         }
     };
@@ -295,11 +281,11 @@ define(['supercluster'], function (supercluster) {
         }
     };
 
-
     MarkerCluster.prototype.removePlacemark = function (placemark) {
         this.layer.removeRenderable(placemark);
         this.placemarks.splice(this.placemarks.indexOf(placemark));
     };
+
     return MarkerCluster;
 })
 ;
