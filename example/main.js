@@ -3,13 +3,13 @@ var markerCluster;
 var cluster;
 var layerManager;
 requirejs(['../libraries/WorldWind/WorldWind',
-        'js/LayerManager', '../MarkerCluster'],
+        'js/LayerManager', '../src/MarkerCluster'],
     function (ww,
               LayerManager, MarkerCluster) {
         "use strict";
 
         WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
-        WorldWind.configuration.baseUrl = "../libraries/WorldWind/"
+        WorldWind.configuration.baseUrl = "libraries/WorldWind/"
         wwd = new WorldWind.WorldWindow("canvasOne");
 
         var layers = [
@@ -21,7 +21,7 @@ requirejs(['../libraries/WorldWind/WorldWind',
 
         for (var l = 0; l < layers.length; l++) {
             layers[l].layer.enabled = layers[l].enabled;
-            layers[l].layer.detailControl = 5;
+            layers[l].layer.detailControl = 1;
             wwd.addLayer(layers[l].layer);
         }
 
@@ -48,30 +48,33 @@ requirejs(['../libraries/WorldWind/WorldWind',
         wwd.navigator.lookAtLocation.latitude = 37;
         wwd.navigator.lookAtLocation.longitude = 15;
 
+        for (var x = -90; x < 90; x = x + 1) {
+            for (var y = -90; y < 90; y = y + 1) {
+                var p = markerCluster.newPlacemark([y, x], null, {enabled: false}, {label: x + "_" + y});
+                markerCluster.add(p);
+            }
+        }
+        markerCluster.generateCluster();
+        /*
+         getJSON('example/places.json', function (geojson) {
 
-        getJSON('places.json', function (geojson) {
 
-           // markerCluster.generateJSONCluster(geojson);
-            /*
-             geojson.features.forEach(function (f) {
-             var coords = f.geometry.coordinates;
-             var p = markerCluster.newPlacemark([coords[0], coords[1]], null, {enabled: false});
-             markerCluster.add(p);
-             });
+         geojson.features.forEach(function (f) {
+         var coords = f.geometry.coordinates;
+         var p = markerCluster.newPlacemark([coords[0], coords[1]], null, {enabled: false});
+         markerCluster.add(p);
+         });
 
-             markerCluster.generateCluster();
-             });
 
-*/
-             for (var x = -100; x < 100; x++) {
-             for (var y = -90; y < 90; y++) {
-             var p = markerCluster.newPlacemark([x, y], null, {enabled: false},{label:x+"_"+y});
-             markerCluster.add(p);
-             }
-             }
-             markerCluster.generateCluster();
+         }
 
-        });
+
+
+
+         });
+         */
+
+
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
