@@ -4,7 +4,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         if (!options) {
             options = {
                 levels: 9,
-                smooth: true
+                smooth: false
             }
         }
 
@@ -55,7 +55,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
 
         navigator.handleWheelEvent = function (event) {
             LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
-
             if (self.options.smooth) {
                 self.globe.goToAnimator.travelTime = 600;
                 if (!this.busy) {
@@ -77,72 +76,95 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                     var newPosition = new WorldWind.Position(lat, lng, alt);
                     nav.busy = true;
                     this.worldWindow.goTo(newPosition, function () {
-                        nav.busy = false;
+                        setTimeout(function () {
+                            nav.busy = false;
+                        }, 300)
+
                     });
                     this.applyLimits();
                     this.worldWindow.redraw();
                 }
             }
-
             var range = this.range;
-            var res;
+            self.handleClusterZoom(range);
+        };
 
+        self.globe.layers[3].handleZoom = function (e, control) {
 
-            var ranges = [100000000,5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000,  7000];
+            if ((e.type === "mousedown" && e.which === 1) || (e.type === "touchstart")) {
+                this.activeControl = control;
+                this.activeOperation = this.handleZoom;
+                e.preventDefault();
 
-            console.log(range);
-            if (range >= ranges[0]) {
-                res = 1;
-            } else if (range <= ranges[ranges.length - 1]) {
-                res = ranges.length;
-            } else {
-                for (var x = 0; x < ranges.length; x++) {
-                    if (range <= ranges[x] && range >= ranges[x + 1]) {
-                        res = x + 1;
-                        break;
+                if (e.type === "touchstart") {
+                    this.currentTouchId = e.changedTouches.item(0).identifier; // capture the touch identifier
+                }
+
+                // This function is called by the timer to perform the operation.
+                var thisLayer = this; // capture 'this' for use in the function
+                var setRange = function () {
+                    if (thisLayer.activeControl) {
+                        if (thisLayer.activeControl === thisLayer.zoomInControl) {
+                            thisLayer.wwd.navigator.range *= (1 - thisLayer.zoomIncrement);
+                        } else if (thisLayer.activeControl === thisLayer.zoomOutControl) {
+                            thisLayer.wwd.navigator.range *= (1 + thisLayer.zoomIncrement);
+                        }
+                        thisLayer.wwd.redraw();
+                        setTimeout(setRange, 50);
                     }
-                }
-            }
-            /*
-
-             if (range > 10000) {
-             res = convertToRange(range, [10000, 5000000], [0, 11]);//0-16
-             res = Math.round(16 - res);
-             } else {
-             res = convertToRange(range, [500, 10000], [11, 16]);//16-23
-             res = Math.round(16 - 11 + res);//23+16
-             }
-             */
-            //res = Math.round(convertToRange(res, [0, 16], [0, self.zoomLevels]));//23
-
-            self.oldZoom = self.zoomLevel || 0;
-            self.zoomLevel = res;
-
-            console.log(res);
-
-            if (res < self.minReached) {
-                self.hideAll();
-                self.showZoomLevel(self.minReached);//possible overhead
-            } else if (res > self.maxReached) {
-                self.hideAll();
-                self.showInRange(self.maxReached);
-                //self.showZoomLevel(self.maxReached);
-            } else {
-                if (self.levels[res].length != self.levels[self.oldZoom].length) {
-                    // self.showZoomLevel(res);
-                    self.hideAll();
-                    self.showInRange(res);
-                    self.globe.redraw();//dynamic
-                }
-
-                //self.hideOutside(res);
-
+                };
+                setTimeout(setRange, 50);
+                var range = thisLayer.wwd.navigator.range;
+                self.handleClusterZoom(range);
 
             }
         };
 
-
     };
+
+    MarkerCluster.prototype.handleClusterZoom = function (range) {
+        var self = this;
+        var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
+        var res;
+        console.log(range);
+        if (range >= ranges[0]) {
+            res = 1;
+        } else if (range <= ranges[ranges.length - 1]) {
+            res = ranges.length;
+        } else {
+            for (var x = 0; x < ranges.length; x++) {
+                if (range <= ranges[x] && range >= ranges[x + 1]) {
+                    res = x + 1;
+                    break;
+                }
+            }
+        }
+        self.oldZoom = self.zoomLevel || 0;
+        self.zoomLevel = res;
+
+        console.log(res);
+
+        if (res < self.minReached) {
+            self.hideAll();
+            self.showZoomLevel(self.minReached);//possible overhead
+        } else if (res > self.maxReached) {
+            self.hideAll();
+            self.showInRange(self.maxReached);
+            //self.showZoomLevel(self.maxReached);
+        } else {
+            if (self.levels[res].length != self.levels[self.oldZoom].length) {
+                // self.showZoomLevel(res);
+                self.hideAll();
+                self.showInRange(res);
+                self.globe.redraw();//dynamic
+            }
+
+            //self.hideOutside(res);
+
+
+        }
+    };
+
     MarkerCluster.prototype.showInRange = function (level) {
         var h = $("#canvasOne").height();
         var v = [];
@@ -221,15 +243,23 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 this.maxReached = y - 1;
                 break;
             } else {
-                var label;
+                var label, imageSource;
                 res.forEach(function (f) {
 
                     if (f.properties.cluster) {
-                        label = "N." + f.properties.point_count;
+                        label = f.properties.point_count;
+                        var offsetText =
+                            new WorldWind.Offset(
+                                WorldWind.OFFSET_FRACTION, 0,
+                                WorldWind.OFFSET_FRACTION, 0);
+                        var imageScale=0.5;
+                        imageSource = "src/images/circle.png";//WorldWind.configuration.baseUrl + "images/pushpins/plain-teal.png";
                     } else {
                         label = f.properties.name;
+                        imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
                     }
-                    var p = self.newPlacemark(f.geometry.coordinates, null, {enabled: false, label: label});
+                    var p = self.newPlacemark(f.geometry.coordinates, null,
+                        {imageSource: imageSource, enabled: false, label: label, offsetText: offsetText, imageScale:imageScale});
                     self.add(p);
                     self.addToZoom(y, p.index);
                 });
@@ -295,16 +325,22 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
 
         if (!placemarkAttributes) {
             placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
-            placemarkAttributes.imageScale = 2;
+            placemarkAttributes.imageScale = options.imageScale?options.imageScale:1;
             placemarkAttributes.imageOffset = new WorldWind.Offset(
                 WorldWind.OFFSET_FRACTION, 0.3,
                 WorldWind.OFFSET_FRACTION, 0.0);
 
-            placemarkAttributes.labelAttributes.offset = new WorldWind.Offset(
-                WorldWind.OFFSET_FRACTION, 0.5,
-                WorldWind.OFFSET_FRACTION, 1.0);
-            placemarkAttributes.labelAttributes.color = WorldWind.Color.YELLOW;
-            placemarkAttributes.labelAttributes.font.size = 40;
+            if (options.offsetText) {
+                placemarkAttributes.labelAttributes.offset = options.offsetText;
+            } else {
+                placemarkAttributes.labelAttributes.offset = new WorldWind.Offset(
+                    WorldWind.OFFSET_FRACTION, 0.5,
+                    WorldWind.OFFSET_FRACTION, 1.0);
+            }
+                placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
+                placemarkAttributes.labelAttributes.font.size = 40;
+
+
 
         }
 
