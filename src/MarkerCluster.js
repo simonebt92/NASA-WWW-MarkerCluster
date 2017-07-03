@@ -247,11 +247,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 res.forEach(function (f) {
 
                     if (f.properties.cluster) {
-                        label = f.properties.point_count;
+                        label = ""+f.properties.point_count;
                         var offsetText =
                             new WorldWind.Offset(
-                                WorldWind.OFFSET_FRACTION, 0,
-                                WorldWind.OFFSET_FRACTION, 0);
+                                WorldWind.OFFSET_FRACTION, -0.1,
+                                WorldWind.OFFSET_FRACTION, -1);
                         var imageScale=0.5;
                         imageSource = "src/images/circle.png";//WorldWind.configuration.baseUrl + "images/pushpins/plain-teal.png";
                     } else {
