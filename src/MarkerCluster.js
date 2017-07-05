@@ -244,16 +244,39 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 break;
             } else {
                 var label, imageSource;
-                res.forEach(function (f) {
 
+                var max=0;
+                var min=Infinity;
+                res.forEach(function(r){
+                    max=Math.max(max,r.properties.point_count || 0);
+                    min=Math.min(max,r.properties.point_count || Infinity);
+                });
+                res.forEach(function (f) {
                     if (f.properties.cluster) {
-                        label = ""+f.properties.point_count;
+                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
+                        var normalizedCount=(f.properties.point_count-min)/(max-min);
+
+                        switch(true){
+                            case normalizedCount<0.25:
+                                imageSource = "src/images/low.png";
+                                break;
+                            case normalizedCount<0.55:
+                                imageSource = "src/images/medium.png";
+                                break;
+                            case normalizedCount<0.75:
+                                imageSource = "src/images/high.png";
+                                break;
+                            default:
+                                imageSource = "src/images/vhigh.png";
+                                break;
+                        }
+
+                        label = ""+f.properties.point_count_abbreviated;
                         var offsetText =
                             new WorldWind.Offset(
-                                WorldWind.OFFSET_FRACTION, -0.1,
-                                WorldWind.OFFSET_FRACTION, -1);
-                        var imageScale=0.5;
-                        imageSource = "src/images/circle.png";//WorldWind.configuration.baseUrl + "images/pushpins/plain-teal.png";
+                                WorldWind.OFFSET_PIXELS, 0,
+                                WorldWind.OFFSET_PIXELS, -100);
+                        var imageScale=1;
                     } else {
                         label = f.properties.name;
                         imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
@@ -350,7 +373,9 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
         placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
         placemark.attributes = placemarkAttributes;
+        placemark.imageTilt=0.9;
         placemark.eyeDistanceScaling = true;
+        placemark.eyeDistanceScalingThreshold=3e6;
         placemark.eyeDistanceScalingLabelThreshold = 1e20;
 
         if (options.enabled == false) {
