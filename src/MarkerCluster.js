@@ -126,7 +126,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         var self = this;
         var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
         var res;
-        console.log(range);
+        // console.log(range);
         if (range >= ranges[0]) {
             res = 1;
         } else if (range <= ranges[ranges.length - 1]) {
@@ -142,7 +142,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         self.oldZoom = self.zoomLevel || 0;
         self.zoomLevel = res;
 
-        console.log(res);
+        //console.log(res);
 
         if (res < self.minReached) {
             self.hideAll();
@@ -163,6 +163,74 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
 
 
         }
+    };
+
+    MarkerCluster.prototype.picking = function () {
+        var self = this;
+        var highlightedItems = [];
+
+        var handlePick = function (o) {
+            var wwd = self.globe;
+            var x = o.clientX,
+                y = o.clientY;
+
+            var redrawRequired = highlightedItems.length > 0;
+
+            for (var h = 0; h < highlightedItems.length; h++) {
+                highlightedItems[h].attributes.imageScale = 1;
+                highlightedItems[h].attributes.labelAttributes.font.size -= 10;
+            }
+            highlightedItems = [];
+
+            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
+            if (pickList.objects.length > 0) {
+                redrawRequired = true;
+            }
+
+
+            if (pickList.objects.length > 0) {
+                for (var p = 0; p < pickList.objects.length; p++) {
+                    if (!pickList.objects[p].isTerrain) {
+                        if (pickList.objects[p].userObject.attributes && pickList.objects[p].userObject.attributes.imageScale) {
+                            pickList.objects[p].userObject.attributes.imageScale = 1.1;
+                            pickList.objects[p].userObject.attributes.labelAttributes.font.size += 10;
+                            highlightedItems.push(pickList.objects[p].userObject);
+                        }
+                    }
+                }
+            }
+
+
+            if (redrawRequired) {
+                wwd.redraw(); // redraw to make the highlighting changes take effect on the screen
+            }
+        };
+
+        var handleClick = function (o) {
+            var wwd = self.globe;
+            var x = o.clientX,
+                y = o.clientY;
+
+
+            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
+
+
+            if (pickList.objects.length > 0) {
+                for (var p = 0; p < pickList.objects.length; p++) {
+                    if (!pickList.objects[p].isTerrain) {
+                        if (pickList.objects[p].userObject.options.zoomLevel) {
+                            self.globe.navigator.range /= 2;
+                            self.handleClusterZoom(self.globe.navigator.range);
+
+                        }
+                    }
+                }
+            }
+
+        };
+
+        wwd.addEventListener("mousemove", handlePick);
+        wwd.addEventListener("click", handleClick);
     };
 
     MarkerCluster.prototype.showInRange = function (level) {
@@ -201,6 +269,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             this.showZoomLevel(level);
         }
     };
+
     MarkerCluster.prototype.generateCluster = function () {
 
         var myJSON = '{"type": "FeatureCollection","features":[';
@@ -229,6 +298,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             maxZoom: self.zoomLevels
         }).load(geojson.features);
 
+        this.cluster = cluster;
         var end = this.zoomLevels;
 
         for (var y = 0; y <= end; y++) {
@@ -245,25 +315,26 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             } else {
                 var label, imageSource;
 
-                var max=0;
-                var min=Infinity;
-                res.forEach(function(r){
-                    max=Math.max(max,r.properties.point_count || 0);
-                    min=Math.min(max,r.properties.point_count || Infinity);
+                var max = 0;
+                var min = Infinity;
+                res.forEach(function (r) {
+                    max = Math.max(max, r.properties.point_count || 0);
+                    min = Math.min(max, r.properties.point_count || Infinity);
                 });
                 res.forEach(function (f) {
                     if (f.properties.cluster) {
-                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
-                        var normalizedCount=(f.properties.point_count-min)/(max-min);
 
-                        switch(true){
-                            case normalizedCount<0.25:
+                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
+                        var normalizedCount = (f.properties.point_count - min) / (max - min);
+
+                        switch (true) {
+                            case normalizedCount < 0.25:
                                 imageSource = "src/images/low.png";
                                 break;
-                            case normalizedCount<0.55:
+                            case normalizedCount < 0.55:
                                 imageSource = "src/images/medium.png";
                                 break;
-                            case normalizedCount<0.75:
+                            case normalizedCount < 0.75:
                                 imageSource = "src/images/high.png";
                                 break;
                             default:
@@ -271,18 +342,28 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                                 break;
                         }
 
-                        label = ""+f.properties.point_count_abbreviated;
+                        label = "" + f.properties.point_count_abbreviated;
                         var offsetText =
                             new WorldWind.Offset(
-                                WorldWind.OFFSET_PIXELS, 0,
-                                WorldWind.OFFSET_PIXELS, -100);
-                        var imageScale=1;
+                                WorldWind.OFFSET_PIXELS, 10,
+                                WorldWind.OFFSET_PIXELS, -80);
+                        var imageScale = 0.8;
+                        var zoomLevel=y+1;
                     } else {
                         label = f.properties.name;
                         imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
+                        var zoomLevel=false;
                     }
-                    var p = self.newPlacemark(f.geometry.coordinates, null,
-                        {imageSource: imageSource, enabled: false, label: label, offsetText: offsetText, imageScale:imageScale});
+                    var options = {
+                        imageSource: imageSource,
+                        enabled: false,
+                        label: label,
+                        offsetText: offsetText,
+                        imageScale: imageScale,
+                        zoomLevel:zoomLevel
+                    };
+                    var p = self.newPlacemark(f.geometry.coordinates, null, options);
+
                     self.add(p);
                     self.addToZoom(y, p.index);
                 });
@@ -291,6 +372,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         if (!this.maxReached) {
             this.maxReached = end;
         }
+        this.picking();
     };
 
     MarkerCluster.prototype.createZoomClusters = function (n) {
@@ -348,7 +430,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
 
         if (!placemarkAttributes) {
             placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
-            placemarkAttributes.imageScale = options.imageScale?options.imageScale:1;
+            placemarkAttributes.imageScale = options.imageScale ? options.imageScale : 1;
             placemarkAttributes.imageOffset = new WorldWind.Offset(
                 WorldWind.OFFSET_FRACTION, 0.3,
                 WorldWind.OFFSET_FRACTION, 0.0);
@@ -360,9 +442,8 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                     WorldWind.OFFSET_FRACTION, 0.5,
                     WorldWind.OFFSET_FRACTION, 1.0);
             }
-                placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
-                placemarkAttributes.labelAttributes.font.size = 40;
-
+            placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
+            placemarkAttributes.labelAttributes.font.size = 40;
 
 
         }
@@ -373,10 +454,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
         placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
         placemark.attributes = placemarkAttributes;
-        placemark.imageTilt=0.9;
+        placemark.imageTilt = 5;
         placemark.eyeDistanceScaling = true;
-        placemark.eyeDistanceScalingThreshold=3e6;
+        placemark.eyeDistanceScalingThreshold = 3e6;
         placemark.eyeDistanceScalingLabelThreshold = 1e20;
+        placemark.options = options;
 
         if (options.enabled == false) {
             placemark.enabled = false;
@@ -412,7 +494,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.placemarks[index].enabled = true;
         return placemark;
     };
-
 
     MarkerCluster.prototype.hideAll = function () {
         for (var x = 0; x <= this.zoomLevels && x <= this.maxReached; x++) {
