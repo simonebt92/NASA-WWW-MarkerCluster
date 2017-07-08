@@ -177,7 +177,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             var redrawRequired = highlightedItems.length > 0;
 
             for (var h = 0; h < highlightedItems.length; h++) {
-                highlightedItems[h].attributes.imageScale = 1;
+                highlightedItems[h].attributes.imageScale-=0.2;
                 highlightedItems[h].attributes.labelAttributes.font.size -= 10;
             }
             highlightedItems = [];
@@ -192,7 +192,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 for (var p = 0; p < pickList.objects.length; p++) {
                     if (!pickList.objects[p].isTerrain) {
                         if (pickList.objects[p].userObject.attributes && pickList.objects[p].userObject.attributes.imageScale) {
-                            pickList.objects[p].userObject.attributes.imageScale = 1.1;
+                            pickList.objects[p].userObject.attributes.imageScale+=0.2;
                             pickList.objects[p].userObject.attributes.labelAttributes.font.size += 10;
                             highlightedItems.push(pickList.objects[p].userObject);
                         }
@@ -219,9 +219,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 for (var p = 0; p < pickList.objects.length; p++) {
                     if (!pickList.objects[p].isTerrain) {
                         if (pickList.objects[p].userObject.options.zoomLevel) {
+                            self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
+                            self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
                             self.globe.navigator.range /= 2;
                             self.handleClusterZoom(self.globe.navigator.range);
-
+                            break;
                         }
                     }
                 }
@@ -293,7 +295,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         var self = this;
         cluster = supercluster({
             log: true,
-            radius: 60,//should be dynamic
+            radius: 70,//should be dynamic
             extent: 128,
             maxZoom: self.zoomLevels
         }).load(geojson.features);
@@ -345,14 +347,14 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                         label = "" + f.properties.point_count_abbreviated;
                         var offsetText =
                             new WorldWind.Offset(
-                                WorldWind.OFFSET_PIXELS, 10,
-                                WorldWind.OFFSET_PIXELS, -80);
-                        var imageScale = 0.8;
-                        var zoomLevel=y+1;
+                                WorldWind.OFFSET_PIXELS, 5,
+                                WorldWind.OFFSET_PIXELS, -40);
+                        var imageScale = 0.5;
+                        var zoomLevel = y + 1;
                     } else {
                         label = f.properties.name;
                         imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
-                        var zoomLevel=false;
+                        var zoomLevel = false;
                     }
                     var options = {
                         imageSource: imageSource,
@@ -360,7 +362,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                         label: label,
                         offsetText: offsetText,
                         imageScale: imageScale,
-                        zoomLevel:zoomLevel
+                        zoomLevel: zoomLevel
                     };
                     var p = self.newPlacemark(f.geometry.coordinates, null, options);
 
@@ -443,7 +445,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                     WorldWind.OFFSET_FRACTION, 1.0);
             }
             placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
-            placemarkAttributes.labelAttributes.font.size = 40;
+            placemarkAttributes.labelAttributes.font.size = 30;
 
 
         }
