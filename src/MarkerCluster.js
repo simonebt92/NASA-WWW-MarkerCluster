@@ -1,57 +1,54 @@
 define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], function (supercluster, wwe) {
 
-    var MarkerCluster = function (globe, markers, options) {
+    var MarkerCluster = function (globe, options) {
+
         if (!options) {
             options = {
-                levels: 9,
-                smooth: false
+                maxLevel: 9,
+                smooth: false,
+                name: "MarkerCluster"
             }
         }
 
         this.options = options;
+
         this.placemarks = [];
-        this.layer = new WorldWind.RenderableLayer("MarkerCluster");
+        var name = options.name || "MarkerCluster";
+        this.layer = new WorldWind.RenderableLayer(name);
         if (globe) {
             globe.addLayer(this.layer);
         }
         this.globe = globe;
+        this.controlLayer = options.controls;
         this.zoomLevel = 0;
-        this.zoomLevels = options.levels;
+        this.smooth = options.smooth || false;
+        this.zoomLevels = options.maxLevel || 9;
         this.levels = [];
         this.maxReached = this.zoomLevels;
         this.minReached = 0;
         this.createZoomClusters(this.zoomLevels);
 
-        if (markers) {
-            var self = this;
-            markers.forEach(function (m) {
-                self.add(m);
-            });
-            this.generateCluster();
-        }
-        //this.ranges = [100000000, 50000000, 10000000, 5000000, 1000000, 500000, 200000, 30000, 10000];
+
         this.bindNavigator();
     };
 
+    MarkerCluster.prototype.off = function () {
+        this.layer.enabled = false;
+    };
+    MarkerCluster.prototype.on = function () {
+        this.layer.enabled = true;
+    };
     MarkerCluster.prototype.bindNavigator = function () {
 
         var navigator = this.globe.navigator;
         var LookAtNavigator = WorldWind.LookAtNavigator;
         var self = this;
 
-        function convertToRange(value, srcRange, dstRange) {
-            if (value < srcRange[0]) {
-                return dstRange[0];
-            }
-            if (value > srcRange[1]) {
-                return dstRange[1];
 
-            }
-            var srcMax = srcRange[1] - srcRange[0],
-                dstMax = dstRange[1] - dstRange[0],
-                adjValue = value - srcRange[0];
-            return (adjValue * dstMax / srcMax) + dstRange[0];
+        if (!navigator.clusters) {
+            navigator.clusters = {};
         }
+        navigator.clusters[self.options.name] = self;
 
         navigator.handleWheelEvent = function (event) {
             LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
@@ -86,45 +83,61 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 }
             }
             var range = this.range;
-            self.handleClusterZoom(range);
-        };
 
-        self.globe.layers[3].handleZoom = function (e, control) {
-
-            if ((e.type === "mousedown" && e.which === 1) || (e.type === "touchstart")) {
-                this.activeControl = control;
-                this.activeOperation = this.handleZoom;
-                e.preventDefault();
-
-                if (e.type === "touchstart") {
-                    this.currentTouchId = e.changedTouches.item(0).identifier; // capture the touch identifier
-                }
-
-                // This function is called by the timer to perform the operation.
-                var thisLayer = this; // capture 'this' for use in the function
-                var setRange = function () {
-                    if (thisLayer.activeControl) {
-                        if (thisLayer.activeControl === thisLayer.zoomInControl) {
-                            thisLayer.wwd.navigator.range *= (1 - thisLayer.zoomIncrement);
-                        } else if (thisLayer.activeControl === thisLayer.zoomOutControl) {
-                            thisLayer.wwd.navigator.range *= (1 + thisLayer.zoomIncrement);
-                        }
-                        thisLayer.wwd.redraw();
-                        setTimeout(setRange, 50);
-                    }
-                };
-                setTimeout(setRange, 50);
-                var range = thisLayer.wwd.navigator.range;
-                self.handleClusterZoom(range);
-
+            for (var key in navigator.clusters) {
+                navigator.clusters[key].handleClusterZoom(range)
             }
+
         };
+
+        if (this.controlLayer) {
+            if (!this.controlLayer.clusters) {
+                this.controlLayer.clusters = {};
+            }
+            this.controlLayer.clusters[self.options.name] = self;
+
+            this.controlLayer.handleZoom = function (e, control) {
+
+                if ((e.type === "mousedown" && e.which === 1) || (e.type === "touchstart")) {
+                    this.activeControl = control;
+                    this.activeOperation = this.handleZoom;
+                    e.preventDefault();
+
+                    if (e.type === "touchstart") {
+                        this.currentTouchId = e.changedTouches.item(0).identifier; // capture the touch identifier
+                    }
+
+                    // This function is called by the timer to perform the operation.
+                    var thisLayer = this; // capture 'this' for use in the function
+                    var setRange = function () {
+                        if (thisLayer.activeControl) {
+                            if (thisLayer.activeControl === thisLayer.zoomInControl) {
+                                thisLayer.wwd.navigator.range *= (1 - thisLayer.zoomIncrement);
+                            } else if (thisLayer.activeControl === thisLayer.zoomOutControl) {
+                                thisLayer.wwd.navigator.range *= (1 + thisLayer.zoomIncrement);
+                            }
+                            thisLayer.wwd.redraw();
+                            setTimeout(setRange, 50);
+                        }
+                    };
+                    setTimeout(setRange, 50);
+                    var range = thisLayer.wwd.navigator.range;
+                    for (var key in this.clusters) {
+                        this.clusters[key].handleClusterZoom(range)
+                    }
+
+
+                }
+            };
+        }
 
     };
 
     MarkerCluster.prototype.handleClusterZoom = function (range) {
         var self = this;
         var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
+
+
         var res;
         // console.log(range);
         if (range >= ranges[0]) {
@@ -145,16 +158,16 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         //console.log(res);
 
         if (res < self.minReached) {
-            self.hideAll();
+            self.hideAllLevels();
             self.showZoomLevel(self.minReached);//possible overhead
         } else if (res > self.maxReached) {
-            self.hideAll();
+            self.hideAllLevels();
             self.showInRange(self.maxReached);
             //self.showZoomLevel(self.maxReached);
         } else {
             if (self.levels[res].length != self.levels[self.oldZoom].length) {
                 // self.showZoomLevel(res);
-                self.hideAll();
+                self.hideAllLevels();
                 self.showInRange(res);
                 self.globe.redraw();//dynamic
             }
@@ -177,7 +190,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             var redrawRequired = highlightedItems.length > 0;
 
             for (var h = 0; h < highlightedItems.length; h++) {
-                highlightedItems[h].attributes.imageScale-=0.2;
+                highlightedItems[h].attributes.imageScale -= 0.2;
                 highlightedItems[h].attributes.labelAttributes.font.size -= 10;
             }
             highlightedItems = [];
@@ -192,7 +205,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 for (var p = 0; p < pickList.objects.length; p++) {
                     if (!pickList.objects[p].isTerrain) {
                         if (pickList.objects[p].userObject.attributes && pickList.objects[p].userObject.attributes.imageScale) {
-                            pickList.objects[p].userObject.attributes.imageScale+=0.2;
+                            pickList.objects[p].userObject.attributes.imageScale += 0.2;
                             pickList.objects[p].userObject.attributes.labelAttributes.font.size += 10;
                             highlightedItems.push(pickList.objects[p].userObject);
                         }
@@ -273,16 +286,16 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
     };
 
     MarkerCluster.prototype.generateCluster = function () {
-
+        this.hideAllSingle();
         var myJSON = '{"type": "FeatureCollection","features":[';
-        newFeature = function (position) {
-            return '{"type": "Feature","properties": {},"geometry": {"type": "Point","coordinates": [' +
+        newFeature = function (position, label) {
+            return '{"type": "Feature","properties": {"name":"' + label + '"},"geometry": {"type": "Point","coordinates": [' +
                 +position.longitude + ',' +
                 +position.latitude + ']}}';
         };
 
         this.placemarks.forEach(function (p, i) {
-            myJSON += newFeature(p.position) + ",";
+            myJSON += newFeature(p.position, p.label) + ",";
         });
         myJSON = myJSON.slice(0, -1);
         myJSON += ']}';
@@ -364,7 +377,8 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                         imageScale: imageScale,
                         zoomLevel: zoomLevel
                     };
-                    var p = self.newPlacemark(f.geometry.coordinates, null, options);
+                    var coords = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+                    var p = self.newPlacemark(coords, null, options);
 
                     self.add(p);
                     self.addToZoom(y, p.index);
@@ -410,11 +424,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
     MarkerCluster.prototype.generatePlacemarks = function (coordinates, placemarkAttributes, options) {
         var lat, lng, alt;
         if (typeof(coordinates[0]) !== "undefined" && typeof(coordinates[1]) !== "undefined") {
-            lat = coordinates[0];
-            lng = coordinates[1];
+            lat = Number(coordinates[0]);
+            lng = Number(coordinates[1]);
         } else if (typeof(coordinates.lat) !== "undefined" && typeof(coordinates.lng) !== "undefined") {
-            lat = coordinates.lat;
-            lng = coordinates.lng;
+            lat = Number(coordinates.lat);
+            lng = Number(coordinates.lng);
         } else {
             throw ("Error in coordinates");
         }
@@ -461,10 +475,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         placemark.eyeDistanceScalingThreshold = 3e6;
         placemark.eyeDistanceScalingLabelThreshold = 1e20;
         placemark.options = options;
-
-        if (options.enabled == false) {
-            placemark.enabled = false;
-        }
+        placemark.enabled = false;
 
         return placemark;
     };
@@ -497,7 +508,13 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         return placemark;
     };
 
-    MarkerCluster.prototype.hideAll = function () {
+    MarkerCluster.prototype.hideAllSingle = function () {
+        for (var x = 0; x <= this.placemarks; x++) {
+            this.placemarks[x].enabled = false;
+        }
+    };
+
+    MarkerCluster.prototype.hideAllLevels = function () {
         for (var x = 0; x <= this.zoomLevels && x <= this.maxReached; x++) {
             this.hideZoomLevel(x);
         }
