@@ -90,6 +90,16 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
 
         };
 
+        navigator.handlePanOrDrag = function (event) {
+            LookAtNavigator.prototype.handlePanOrDrag.apply(this, arguments);
+            if (event.state == "ended") {//or changed
+                var range = this.range;
+                for (var key in navigator.clusters) {
+                    navigator.clusters[key].handleClusterZoom(range, true)
+                }
+            }
+        };
+
         if (this.controlLayer) {
             if (!this.controlLayer.clusters) {
                 this.controlLayer.clusters = {};
@@ -97,43 +107,29 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             this.controlLayer.clusters[self.options.name] = self;
 
             this.controlLayer.handleZoom = function (e, control) {
-
-                if ((e.type === "mousedown" && e.which === 1) || (e.type === "touchstart")) {
-                    this.activeControl = control;
-                    this.activeOperation = this.handleZoom;
-                    e.preventDefault();
-
-                    if (e.type === "touchstart") {
-                        this.currentTouchId = e.changedTouches.item(0).identifier; // capture the touch identifier
-                    }
-
-                    // This function is called by the timer to perform the operation.
-                    var thisLayer = this; // capture 'this' for use in the function
-                    var setRange = function () {
-                        if (thisLayer.activeControl) {
-                            if (thisLayer.activeControl === thisLayer.zoomInControl) {
-                                thisLayer.wwd.navigator.range *= (1 - thisLayer.zoomIncrement);
-                            } else if (thisLayer.activeControl === thisLayer.zoomOutControl) {
-                                thisLayer.wwd.navigator.range *= (1 + thisLayer.zoomIncrement);
-                            }
-                            thisLayer.wwd.redraw();
-                            setTimeout(setRange, 50);
-                        }
-                    };
-                    setTimeout(setRange, 50);
-                    var range = thisLayer.wwd.navigator.range;
+                self.controlLayer.__proto__.handleZoom.apply(this, arguments);
+                if (e.type == "mousedown") {
+                    var range = this.wwd.navigator.range;
                     for (var key in this.clusters) {
                         this.clusters[key].handleClusterZoom(range)
                     }
-
-
                 }
-            };
-        }
+            }
 
+            this.controlLayer.handlePan = function (e, control) {
+                self.controlLayer.__proto__.handlePan.apply(this, arguments);
+                if (e.type == "mousedown") {
+                    var range = this.wwd.navigator.range;
+                    for (var key in this.clusters) {
+                        this.clusters[key].handleClusterZoom(range, true)
+                    }
+                }
+
+            }
+        }
     };
 
-    MarkerCluster.prototype.handleClusterZoom = function (range) {
+    MarkerCluster.prototype.handleClusterZoom = function (range, pan) {
         var self = this;
         var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
 
@@ -165,7 +161,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             self.showInRange(self.maxReached);
             //self.showZoomLevel(self.maxReached);
         } else {
-            if (self.levels[res].length != self.levels[self.oldZoom].length) {
+            if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
                 // self.showZoomLevel(res);
                 self.hideAllLevels();
                 self.showInRange(res);
@@ -181,12 +177,10 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
     MarkerCluster.prototype.picking = function () {
         var self = this;
         var highlightedItems = [];
-
         var handlePick = function (o) {
             var wwd = self.globe;
             var x = o.clientX,
                 y = o.clientY;
-
             var redrawRequired = highlightedItems.length > 0;
 
             for (var h = 0; h < highlightedItems.length; h++) {
@@ -200,7 +194,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 redrawRequired = true;
             }
 
-
             if (pickList.objects.length > 0) {
                 for (var p = 0; p < pickList.objects.length; p++) {
                     if (!pickList.objects[p].isTerrain) {
@@ -213,21 +206,15 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 }
             }
 
-
             if (redrawRequired) {
                 wwd.redraw(); // redraw to make the highlighting changes take effect on the screen
             }
         };
-
         var handleClick = function (o) {
             var wwd = self.globe;
             var x = o.clientX,
                 y = o.clientY;
-
-
             var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
-
-
             if (pickList.objects.length > 0) {
                 for (var p = 0; p < pickList.objects.length; p++) {
                     if (!pickList.objects[p].isTerrain) {
@@ -243,14 +230,15 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             }
 
         };
-
-        wwd.addEventListener("mousemove", handlePick);
-        wwd.addEventListener("click", handleClick);
+        if (!wwd.eventListeners.addedListeners) {
+            wwd.eventListeners.addedListeners = true;
+            wwd.addEventListener("mousemove", handlePick);
+            wwd.addEventListener("click", handleClick);
+        }
     };
 
     MarkerCluster.prototype.showInRange = function (level) {
         var h = $("#canvasOne").height();
-        var v = [];
         if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
 
             var center = wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2));
@@ -265,12 +253,12 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             var maxLat = center.latitude + base;
             var minLng = center.longitude - base;
             var maxLng = center.longitude + base;
-
+            var buffer = (maxLat - minLat) / 10;
             var bb = {
-                ix: minLat,
-                iy: minLng,
-                ax: maxLat,
-                ay: maxLng
+                ix: minLat - buffer,
+                iy: minLng - buffer,
+                ax: maxLat + buffer,
+                ay: maxLng + buffer
             };
             for (var x = 0; x < this.levels[level].length; x++) {
                 var point = this.placemarks[this.levels[level][x]];
@@ -323,7 +311,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             if (this.minReached == 0 && res.length > 0) {
                 this.minReached = y;
             }
-            //if (y > 0 && res.length > 0 && res.length == this.levels[y - 1].length) {
+
             if (res.length == geojson.features.length && y > 0 && res.length > 0 && res.length == this.levels[y - 1].length) {
                 this.maxReached = y - 1;
                 break;
