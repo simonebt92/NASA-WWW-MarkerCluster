@@ -1,5 +1,11 @@
 define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], function (supercluster, wwe) {
 
+    /**
+     * MarkerCLuster constructor
+     * @param globe: The worldwind globe where to insert the cluster
+     * @param options: options to customize the creation of the cluster
+     * @constructor
+     */
     var MarkerCluster = function (globe, options) {
 
         if (!options) {
@@ -32,12 +38,23 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.bindNavigator();
     };
 
+    /**
+     * Turn off the layer containing the markerCluster
+     */
     MarkerCluster.prototype.off = function () {
         this.layer.enabled = false;
     };
+
+    /**
+     * Turn off the layer containing the markerCluster
+     */
     MarkerCluster.prototype.on = function () {
         this.layer.enabled = true;
     };
+
+    /**
+     * Attach navigation function to markerCluster
+     */
     MarkerCluster.prototype.bindNavigator = function () {
 
         var navigator = this.globe.navigator;
@@ -129,13 +146,16 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Manage the clusters to show and hide based on the range
+     * @param range the range of the navigator (distance from camera to terrain)
+     * @param pan: Boolean. If the action is a pan or drag
+     */
     MarkerCluster.prototype.handleClusterZoom = function (range, pan) {
         var self = this;
         var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
 
-
         var res;
-        // console.log(range);
         if (range >= ranges[0]) {
             res = 1;
         } else if (range <= ranges[ranges.length - 1]) {
@@ -151,29 +171,25 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         self.oldZoom = self.zoomLevel || 0;
         self.zoomLevel = res;
 
-        //console.log(res);
-
         if (res < self.minReached) {
             self.hideAllLevels();
             self.showZoomLevel(self.minReached);//possible overhead
         } else if (res > self.maxReached) {
             self.hideAllLevels();
             self.showInRange(self.maxReached);
-            //self.showZoomLevel(self.maxReached);
         } else {
             if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
-                // self.showZoomLevel(res);
                 self.hideAllLevels();
                 self.showInRange(res);
-                self.globe.redraw();//dynamic
+                self.globe.redraw();
             }
-
-            //self.hideOutside(res);
-
 
         }
     };
 
+    /**
+     * Add listeners for mouseover and click
+     */
     MarkerCluster.prototype.picking = function () {
         var self = this;
         var highlightedItems = [];
@@ -237,6 +253,10 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Shows the marker in the current area at a certain level
+     * @param level: Integer. Current level of the camera (matched clusters levels)
+     */
     MarkerCluster.prototype.showInRange = function (level) {
         var h = $("#canvasOne").height();
         if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
@@ -273,6 +293,9 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Generates clusters from placemarks
+     */
     MarkerCluster.prototype.generateCluster = function () {
         this.hideAllSingle();
         var myJSON = '{"type": "FeatureCollection","features":[';
@@ -292,6 +315,10 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.showZoomLevel(this.zoomLevel);
     };
 
+    /**
+     * Generate clusters from a geojson of points
+     * @param geojson
+     */
     MarkerCluster.prototype.generateJSONCluster = function (geojson) {
         var self = this;
         cluster = supercluster({
@@ -379,6 +406,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.picking();
     };
 
+    /**
+     * Initialize the levels containing the clusters
+     * @param n:Integer. The number of levels for the clusters.
+     * @returns {Array}. The initialized empty levels
+     */
     MarkerCluster.prototype.createZoomClusters = function (n) {
         for (var x = 0; x <= n; x++) {
             this.levels[x] = [];
@@ -386,14 +418,27 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         return this.levels;
     };
 
-    MarkerCluster.prototype.addToZoom = function (zoom, index) {
-        this.levels[zoom].push(index);
+    /**
+     * Add a specified index of a marker to a specified level
+     * @param level: Integer. Specifies the level that should contain the marker
+     * @param index. The identifier for the marker
+     */
+    MarkerCluster.prototype.addToZoom = function (level, index) {
+        this.levels[level].push(index);
     };
 
+    /**
+     * Initialize the level corresponding to the markerCluster
+     * @param layer. The layer associated to this instance of markerCluster.
+     */
     MarkerCluster.prototype.setLayer = function (layer) {
         this.layer = layer;
     };
 
+    /**
+     * Add a new placemark or a list of placemarks to the markerlcuster container.
+     * @param placemark. The placemark to add or an array of placemarks.
+     */
     MarkerCluster.prototype.add = function (placemark) {
         if (Object.prototype.toString.call(placemark) === '[object Array]') {
             var self = this;
@@ -409,6 +454,13 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Generate a standard placemark
+     * @param coordinates: Coordinates of the placemark
+     * @param placemarkAttributes: Attributes to associate to the placemark
+     * @param options: Options to assign to the placemark
+     * @returns {*}
+     */
     MarkerCluster.prototype.generatePlacemarks = function (coordinates, placemarkAttributes, options) {
         var lat, lng, alt;
         if (typeof(coordinates[0]) !== "undefined" && typeof(coordinates[1]) !== "undefined") {
@@ -420,7 +472,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         } else {
             throw ("Error in coordinates");
         }
-
 
         if (!options) {
             options = {};
@@ -448,8 +499,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             }
             placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
             placemarkAttributes.labelAttributes.font.size = 30;
-
-
         }
 
         var placemark = new WorldWind.Placemark(position, true, null);
@@ -468,6 +517,13 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         return placemark;
     };
 
+    /**
+     * Create a new placemark from a pair of coordinates or a coordinates array
+     * @param coordinates: The coordinate fot the placemark
+     * @param placemarkAttributes: Attributes to associate to the placemark
+     * @param options: Options to assign to the placemark
+     * @returns {*}
+     */
     MarkerCluster.prototype.newPlacemark = function (coordinates, placemarkAttributes, options) {
         if (!coordinates) {
             throw ("No coordinates provided");
@@ -484,61 +540,74 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         return placemark;
     };
 
+    /**
+     * Hides a specified placemark
+     * @param placemark: the placemark to hide
+     * @returns {*}
+     */
     MarkerCluster.prototype.hide = function (placemark) {
         var index = placemark.index;
         this.placemarks[index].enabled = false;
         return placemark;
     };
 
+    /**
+     * Shows a specified placemark
+     * @param placemark: the placemark to show
+     * @returns {*}
+     */
     MarkerCluster.prototype.show = function (placemark) {
         var index = placemark.index;
         this.placemarks[index].enabled = true;
         return placemark;
     };
 
+    /**
+     * Hides all placemark inserted
+     */
     MarkerCluster.prototype.hideAllSingle = function () {
         for (var x = 0; x <= this.placemarks; x++) {
             this.placemarks[x].enabled = false;
         }
     };
 
+    /**
+     * Hides all placemark at all zoom levels
+     */
     MarkerCluster.prototype.hideAllLevels = function () {
         for (var x = 0; x <= this.zoomLevels && x <= this.maxReached; x++) {
             this.hideZoomLevel(x);
         }
     };
 
-    MarkerCluster.prototype.hideZoomLevel = function (zoomLevel) {
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                this.hide(this.placemarks[this.levels[zoomLevel][x]]);
+    /**
+     * Hides the placemarks at a specified zoom level
+     * @param level: the level in which the placemark will be hidden
+     */
+    MarkerCluster.prototype.hideZoomLevel = function (level) {
+        if (this.levels[level]) {
+            for (var x = 0; x < this.levels[level].length; x++) {
+                this.hide(this.placemarks[this.levels[level][x]]);
             }
         }
     };
 
-    MarkerCluster.prototype.showZoomLevel = function (zoomLevel) {
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                this.show(this.placemarks[this.levels[zoomLevel][x]]);
+    /**
+     * Shows the placemarks at a specified zoom level
+     * @param level: the level in which the placemark will be shown
+     */
+    MarkerCluster.prototype.showZoomLevel = function (level) {
+        if (this.levels[level]) {
+            for (var x = 0; x < this.levels[level].length; x++) {
+                this.show(this.placemarks[this.levels[level][x]]);
             }
         }
     };
 
-    MarkerCluster.prototype.hideOutside = function (zoomLevel) {
-        var count = 0;
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                if (this.placemarks[this.levels[zoomLevel][x]].imageBounds) {
-                    if (!this.placemarks[this.levels[zoomLevel][x]].isVisible(wwd.drawContext)) {
-                        this.placemarks[this.levels[zoomLevel][x]].enabled = false;
-                        count++;
-                    }
-                }
-            }
-        }
-        console.log(count);
-    };
-
+    /**
+     * Removes a placemark from the cluster
+     * @param placemark: The placemark that needs to be removed
+     */
     MarkerCluster.prototype.removePlacemark = function (placemark) {
         this.layer.removeRenderable(placemark);
         this.placemarks.splice(this.placemarks.indexOf(placemark));
