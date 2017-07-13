@@ -12,7 +12,8 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             options = {
                 maxLevel: 9,
                 smooth: false,
-                name: "MarkerCluster"
+                name: "MarkerCluster",
+                maxCount:3000
             }
         }
 
@@ -25,6 +26,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.globe = globe;
         this.controlLayer = options.controls;
         this.zoomLevel = 0;
+        this.maxCount= options.maxCount || 1000;
         this.smooth = options.smooth || false;
         this.zoomLevels = options.maxLevel || 9;
         this.levels = [];
@@ -241,7 +243,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                             self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
                             self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
                             self.globe.navigator.range /= 2;
-                            self.handleClusterZoom(self.globe.navigator.range);
+                            self.handleClusterZoom(self.globe.navigator.range,true);
                             break;
                         }
                     }
@@ -262,9 +264,10 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
      */
     MarkerCluster.prototype.showInRange = function (level) {
         var h = $("#canvasOne").height();
-        if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
+        var w = $("#canvasOne").width();
+        if (wwd.pickTerrain(new WorldWind.Vec2(w / 2, h / 2)).objects) {
 
-            var center = wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2));
+            var center = wwd.pickTerrain(new WorldWind.Vec2(w / 2, h / 2));
 
             center = center.objects[0].position;
 
@@ -283,12 +286,17 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 ax: maxLat + buffer,
                 ay: maxLng + buffer
             };
+            var count=0;
             for (var x = 0; x < this.levels[level].length; x++) {
                 var point = this.placemarks[this.levels[level][x]];
                 var p = point.position;
 
                 if (bb.ix <= p.latitude && p.latitude <= bb.ax && bb.iy <= p.longitude && p.longitude <= bb.ay) {
+                    if(count>=this.maxCount){
+                        return;
+                    }
                     this.show(point);
+                    count++;
                 }
             }
         } else {
