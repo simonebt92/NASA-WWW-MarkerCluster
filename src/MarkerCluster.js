@@ -1,6 +1,13 @@
 define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], function (supercluster, wwe) {
 
+    /**
+     * MarkerCLuster constructor
+     * @param globe: The worldwind globe where to insert the cluster
+     * @param options: options to customize the creation of the cluster
+     * @constructor
+     */
     var MarkerCluster = function (globe, options) {
+
         if (!options) {
             options = {
                 maxLevel: 9,
@@ -23,254 +30,34 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.levels = [];
         this.maxReached = this.zoomLevels;
         this.minReached = 0;
-
+        this.createZoomClusters(this.zoomLevels);
         if (globe) {
             globe.addLayer(this.layer);
             if (globe.navigator) {
                 this.bindNavigator();
             }
         }
-        this.createZoomClusters(this.zoomLevels);
+
 
     };
 
+    /**
+     * Turn off the layer containing the markerCluster
+     */
     MarkerCluster.prototype.off = function () {
         this.layer.enabled = false;
     };
 
+    /**
+     * Turn off the layer containing the markerCluster
+     */
     MarkerCluster.prototype.on = function () {
         this.layer.enabled = true;
     };
 
-    MarkerCluster.prototype.picking = function () {
-        var self = this;
-        var wwd=this.globe;
-        var highlightedItems = [];
-        var handlePick = function (o) {
-            var wwd = self.globe;
-            var x = o.clientX,
-                y = o.clientY;
-            var redrawRequired = highlightedItems.length > 0;
-
-            for (var h = 0; h < highlightedItems.length; h++) {
-                highlightedItems[h].attributes.imageScale -= 0.2;
-                highlightedItems[h].attributes.labelAttributes.font.size -= 10;
-            }
-            highlightedItems = [];
-
-            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
-            if (pickList.objects.length > 0) {
-                redrawRequired = true;
-            }
-
-            if (pickList.objects.length > 0) {
-                for (var p = 0; p < pickList.objects.length; p++) {
-                    if (!pickList.objects[p].isTerrain) {
-                        if (pickList.objects[p].userObject.attributes && pickList.objects[p].userObject.attributes.imageScale) {
-                            pickList.objects[p].userObject.attributes.imageScale += 0.2;
-                            pickList.objects[p].userObject.attributes.labelAttributes.font.size += 10;
-                            highlightedItems.push(pickList.objects[p].userObject);
-                        }
-                    }
-                }
-            }
-
-            if (redrawRequired) {
-                wwd.redraw(); // redraw to make the highlighting changes take effect on the screen
-            }
-        };
-        var handleClick = function (o) {
-            var wwd = self.globe;
-            var x = o.clientX,
-                y = o.clientY;
-            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
-            if (pickList.objects.length > 0) {
-                for (var p = 0; p < pickList.objects.length; p++) {
-                    if (!pickList.objects[p].isTerrain) {
-                        if (pickList.objects[p].userObject.options.zoomLevel) {
-                            self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
-                            self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
-                            self.globe.navigator.range /= 2;
-                            self.handleClusterZoom(self.globe.navigator.range);
-                            break;
-                        }
-                    }
-                }
-            }
-
-        };
-        if (!wwd.eventListeners.addedListeners) {
-            wwd.eventListeners.addedListeners = true;
-            wwd.addEventListener("mousemove", handlePick);
-            wwd.addEventListener("click", handleClick);
-        }
-    };
-
-    MarkerCluster.prototype.createZoomClusters = function (n) {
-        for (var x = 0; x <= n; x++) {
-            this.levels[x] = [];
-        }
-        return this.levels;
-    };
-
-    MarkerCluster.prototype.addToZoom = function (zoom, index) {
-        this.levels[zoom].push(index);
-    };
-
-    MarkerCluster.prototype.setLayer = function (layer) {
-        this.layer = layer;
-    };
-
-    MarkerCluster.prototype.add = function (placemark) {
-        if (Object.prototype.toString.call(placemark) === '[object Array]') {
-            var self = this;
-            placemark.forEach(function (place) {
-                placemark.index = self.placemarks.length;
-                self.layer.addRenderable(place);
-                self.placemarks.push(place);
-            })
-        } else {
-            placemark.index = this.placemarks.length;
-            this.layer.addRenderable(placemark);
-            this.placemarks.push(placemark);
-        }
-    };
-
-    MarkerCluster.prototype.generatePlacemarks = function (coordinates, placemarkAttributes, options) {
-        var lat, lng, alt;
-        if (typeof(coordinates[0]) !== "undefined" && typeof(coordinates[1]) !== "undefined") {
-            lat = Number(coordinates[0]);
-            lng = Number(coordinates[1]);
-        } else if (typeof(coordinates.lat) !== "undefined" && typeof(coordinates.lng) !== "undefined") {
-            lat = Number(coordinates.lat);
-            lng = Number(coordinates.lng);
-        } else {
-            throw ("Error in coordinates");
-        }
-
-
-        if (!options) {
-            options = {};
-        }
-
-        alt = coordinates[2] ? coordinates[2] : 0;
-        alt = coordinates.alt ? coordinates.alt : alt;
-
-        var position = new WorldWind.Position(lat, lng, alt);
-
-
-        if (!placemarkAttributes) {
-            placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
-            placemarkAttributes.imageScale = options.imageScale ? options.imageScale : 1;
-            placemarkAttributes.imageOffset = new WorldWind.Offset(
-                WorldWind.OFFSET_FRACTION, 0.3,
-                WorldWind.OFFSET_FRACTION, 0.0);
-
-            if (options.offsetText) {
-                placemarkAttributes.labelAttributes.offset = options.offsetText;
-            } else {
-                placemarkAttributes.labelAttributes.offset = new WorldWind.Offset(
-                    WorldWind.OFFSET_FRACTION, 0.5,
-                    WorldWind.OFFSET_FRACTION, 1.0);
-            }
-            placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
-            placemarkAttributes.labelAttributes.font.size = 30;
-
-
-        }
-
-        var placemark = new WorldWind.Placemark(position, true, null);
-        placemark.label = options.label ? options.label : "MyMarker " + lat + " - " + lng;
-        placemark.altitudeMode = options.altitudeMode ? options.altitudeMode : WorldWind.RELATIVE_TO_GROUND;
-        placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
-        placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
-        placemark.attributes = placemarkAttributes;
-        placemark.imageTilt = 5;
-        placemark.eyeDistanceScaling = true;
-        placemark.eyeDistanceScalingThreshold = 3e6;
-        placemark.eyeDistanceScalingLabelThreshold = 1e20;
-        placemark.options = options;
-        placemark.enabled = false;
-
-        return placemark;
-    };
-
-    MarkerCluster.prototype.newPlacemark = function (coordinates, placemarkAttributes, options) {
-        if (!coordinates) {
-            throw ("No coordinates provided");
-        }
-        var placemark;
-        if (typeof (coordinates[0]) == "object") {
-            placemark = [];
-            for (var index in coordinates) {
-                placemark.push(this.generatePlacemarks(coordinates[index], placemarkAttributes, options));
-            }
-        } else {
-            placemark = this.generatePlacemarks(coordinates, placemarkAttributes, options)
-        }
-        return placemark;
-    };
-
-    MarkerCluster.prototype.hide = function (placemark) {
-        var index = placemark.index;
-        this.placemarks[index].enabled = false;
-        return placemark;
-    };
-
-    MarkerCluster.prototype.show = function (placemark) {
-        var index = placemark.index;
-        this.placemarks[index].enabled = true;
-        return placemark;
-    };
-
-    MarkerCluster.prototype.hideAllSingle = function () {
-        for (var x = 0; x <= this.placemarks; x++) {
-            this.placemarks[x].enabled = false;
-        }
-    };
-
-    MarkerCluster.prototype.hideAllLevels = function () {
-        for (var x = 0; x <= this.zoomLevels && x <= this.maxReached; x++) {
-            this.hideZoomLevel(x);
-        }
-    };
-
-    MarkerCluster.prototype.hideZoomLevel = function (zoomLevel) {
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                this.hide(this.placemarks[this.levels[zoomLevel][x]]);
-            }
-        }
-    };
-
-    MarkerCluster.prototype.showZoomLevel = function (zoomLevel) {
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                this.show(this.placemarks[this.levels[zoomLevel][x]]);
-            }
-        }
-    };
-
-    MarkerCluster.prototype.hideOutside = function (zoomLevel) {
-        var count = 0;
-        if (this.levels[zoomLevel]) {
-            for (var x = 0; x < this.levels[zoomLevel].length; x++) {
-                if (this.placemarks[this.levels[zoomLevel][x]].imageBounds) {
-                    if (!this.placemarks[this.levels[zoomLevel][x]].isVisible(wwd.drawContext)) {
-                        this.placemarks[this.levels[zoomLevel][x]].enabled = false;
-                        count++;
-                    }
-                }
-            }
-        }
-        console.log(count);
-    };
-
-    MarkerCluster.prototype.removePlacemark = function (placemark) {
-        this.layer.removeRenderable(placemark);
-        this.placemarks.splice(this.placemarks.indexOf(placemark));
-    };
-
+    /**
+     * Attach navigation function to markerCluster
+     */
     MarkerCluster.prototype.bindNavigator = function () {
 
         var navigator = this.globe.navigator;
@@ -362,6 +149,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Manage the clusters to show and hide based on the range
+     * @param range the range of the navigator (distance from camera to terrain)
+     * @param pan: Boolean. If the action is a pan or drag
+     */
     MarkerCluster.prototype.handleClusterZoom = function (range, pan) {
         var self = this;
         var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
@@ -392,11 +184,82 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
                 self.hideAllLevels();
                 self.showInRange(res);
-                self.globe.redraw();//dynamic
+                self.globe.redraw();
             }
+
         }
     };
 
+    /**
+     * Add listeners for mouseover and click
+     */
+    MarkerCluster.prototype.picking = function () {
+        var self = this;
+        var highlightedItems = [];
+        var handlePick = function (o) {
+            var wwd = self.globe;
+            var x = o.clientX,
+                y = o.clientY;
+            var redrawRequired = highlightedItems.length > 0;
+
+            for (var h = 0; h < highlightedItems.length; h++) {
+                highlightedItems[h].attributes.imageScale -= 0.2;
+                highlightedItems[h].attributes.labelAttributes.font.size -= 10;
+            }
+            highlightedItems = [];
+
+            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
+            if (pickList.objects.length > 0) {
+                redrawRequired = true;
+            }
+
+            if (pickList.objects.length > 0) {
+                for (var p = 0; p < pickList.objects.length; p++) {
+                    if (!pickList.objects[p].isTerrain) {
+                        if (pickList.objects[p].userObject.attributes && pickList.objects[p].userObject.attributes.imageScale) {
+                            pickList.objects[p].userObject.attributes.imageScale += 0.2;
+                            pickList.objects[p].userObject.attributes.labelAttributes.font.size += 10;
+                            highlightedItems.push(pickList.objects[p].userObject);
+                        }
+                    }
+                }
+            }
+
+            if (redrawRequired) {
+                wwd.redraw(); // redraw to make the highlighting changes take effect on the screen
+            }
+        };
+        var handleClick = function (o) {
+            var wwd = self.globe;
+            var x = o.clientX,
+                y = o.clientY;
+            var pickList = wwd.pick(wwd.canvasCoordinates(x, y));
+            if (pickList.objects.length > 0) {
+                for (var p = 0; p < pickList.objects.length; p++) {
+                    if (!pickList.objects[p].isTerrain) {
+                        if (pickList.objects[p].userObject.options.zoomLevel) {
+                            self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
+                            self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
+                            self.globe.navigator.range /= 2;
+                            self.handleClusterZoom(self.globe.navigator.range);
+                            break;
+                        }
+                    }
+                }
+            }
+
+        };
+        if (!self.globe.eventListeners.addedListeners) {
+            self.globe.eventListeners.addedListeners = true;
+            self.globe.addEventListener("mousemove", handlePick);
+            self.globe.addEventListener("click", handleClick);
+        }
+    };
+
+    /**
+     * Shows the marker in the current area at a certain level
+     * @param level: Integer. Current level of the camera (matched clusters levels)
+     */
     MarkerCluster.prototype.showInRange = function (level) {
         var h = $("#canvasOne").height();
         if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
@@ -433,6 +296,9 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         }
     };
 
+    /**
+     * Generates clusters from placemarks
+     */
     MarkerCluster.prototype.generateCluster = function () {
         this.hideAllSingle();
         var myJSON = '{"type": "FeatureCollection","features":[';
@@ -452,6 +318,10 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.showZoomLevel(this.zoomLevel);
     };
 
+    /**
+     * Generate clusters from a geojson of points
+     * @param geojson
+     */
     MarkerCluster.prototype.generateJSONCluster = function (geojson) {
         var self = this;
         cluster = supercluster({
@@ -537,6 +407,213 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             this.maxReached = end;
         }
         this.picking();
+    };
+
+    /**
+     * Initialize the levels containing the clusters
+     * @param n:Integer. The number of levels for the clusters.
+     * @returns {Array}. The initialized empty levels
+     */
+    MarkerCluster.prototype.createZoomClusters = function (n) {
+        for (var x = 0; x <= n; x++) {
+            this.levels[x] = [];
+        }
+        return this.levels;
+    };
+
+    /**
+     * Add a specified index of a marker to a specified level
+     * @param level: Integer. Specifies the level that should contain the marker
+     * @param index. The identifier for the marker
+     */
+    MarkerCluster.prototype.addToZoom = function (level, index) {
+        this.levels[level].push(index);
+    };
+
+    /**
+     * Initialize the level corresponding to the markerCluster
+     * @param layer. The layer associated to this instance of markerCluster.
+     */
+    MarkerCluster.prototype.setLayer = function (layer) {
+        this.layer = layer;
+    };
+
+    /**
+     * Add a new placemark or a list of placemarks to the markerlcuster container.
+     * @param placemark. The placemark to add or an array of placemarks.
+     */
+    MarkerCluster.prototype.add = function (placemark) {
+        if (Object.prototype.toString.call(placemark) === '[object Array]') {
+            var self = this;
+            placemark.forEach(function (place) {
+                placemark.index = self.placemarks.length;
+                self.layer.addRenderable(place);
+                self.placemarks.push(place);
+            })
+        } else {
+            placemark.index = this.placemarks.length;
+            this.layer.addRenderable(placemark);
+            this.placemarks.push(placemark);
+        }
+    };
+
+    /**
+     * Generate a standard placemark
+     * @param coordinates: Coordinates of the placemark
+     * @param placemarkAttributes: Attributes to associate to the placemark
+     * @param options: Options to assign to the placemark
+     * @returns {*}
+     */
+    MarkerCluster.prototype.generatePlacemarks = function (coordinates, placemarkAttributes, options) {
+        var lat, lng, alt;
+        if (typeof(coordinates[0]) !== "undefined" && typeof(coordinates[1]) !== "undefined") {
+            lat = Number(coordinates[0]);
+            lng = Number(coordinates[1]);
+        } else if (typeof(coordinates.lat) !== "undefined" && typeof(coordinates.lng) !== "undefined") {
+            lat = Number(coordinates.lat);
+            lng = Number(coordinates.lng);
+        } else {
+            throw ("Error in coordinates");
+        }
+
+        if (!options) {
+            options = {};
+        }
+
+        alt = coordinates[2] ? coordinates[2] : 0;
+        alt = coordinates.alt ? coordinates.alt : alt;
+
+        var position = new WorldWind.Position(lat, lng, alt);
+
+
+        if (!placemarkAttributes) {
+            placemarkAttributes = new WorldWind.PlacemarkAttributes(null);
+            placemarkAttributes.imageScale = options.imageScale ? options.imageScale : 1;
+            placemarkAttributes.imageOffset = new WorldWind.Offset(
+                WorldWind.OFFSET_FRACTION, 0.3,
+                WorldWind.OFFSET_FRACTION, 0.0);
+
+            if (options.offsetText) {
+                placemarkAttributes.labelAttributes.offset = options.offsetText;
+            } else {
+                placemarkAttributes.labelAttributes.offset = new WorldWind.Offset(
+                    WorldWind.OFFSET_FRACTION, 0.5,
+                    WorldWind.OFFSET_FRACTION, 1.0);
+            }
+            placemarkAttributes.labelAttributes.color = WorldWind.Color.WHITE;
+            placemarkAttributes.labelAttributes.font.size = 30;
+        }
+
+        var placemark = new WorldWind.Placemark(position, true, null);
+        placemark.label = options.label ? options.label : "MyMarker " + lat + " - " + lng;
+        placemark.altitudeMode = options.altitudeMode ? options.altitudeMode : WorldWind.RELATIVE_TO_GROUND;
+        placemarkAttributes = new WorldWind.PlacemarkAttributes(placemarkAttributes);
+        placemarkAttributes.imageSource = options.imageSource ? options.imageSource : WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
+        placemark.attributes = placemarkAttributes;
+        placemark.imageTilt = 5;
+        placemark.eyeDistanceScaling = true;
+        placemark.eyeDistanceScalingThreshold = 3e6;
+        placemark.eyeDistanceScalingLabelThreshold = 1e20;
+        placemark.options = options;
+        placemark.enabled = false;
+
+        return placemark;
+    };
+
+    /**
+     * Create a new placemark from a pair of coordinates or a coordinates array
+     * @param coordinates: The coordinate fot the placemark
+     * @param placemarkAttributes: Attributes to associate to the placemark
+     * @param options: Options to assign to the placemark
+     * @returns {*}
+     */
+    MarkerCluster.prototype.newPlacemark = function (coordinates, placemarkAttributes, options) {
+        if (!coordinates) {
+            throw ("No coordinates provided");
+        }
+        var placemark;
+        if (typeof (coordinates[0]) == "object") {
+            placemark = [];
+            for (var index in coordinates) {
+                placemark.push(this.generatePlacemarks(coordinates[index], placemarkAttributes, options));
+            }
+        } else {
+            placemark = this.generatePlacemarks(coordinates, placemarkAttributes, options)
+        }
+        return placemark;
+    };
+
+    /**
+     * Hides a specified placemark
+     * @param placemark: the placemark to hide
+     * @returns {*}
+     */
+    MarkerCluster.prototype.hide = function (placemark) {
+        var index = placemark.index;
+        this.placemarks[index].enabled = false;
+        return placemark;
+    };
+
+    /**
+     * Shows a specified placemark
+     * @param placemark: the placemark to show
+     * @returns {*}
+     */
+    MarkerCluster.prototype.show = function (placemark) {
+        var index = placemark.index;
+        this.placemarks[index].enabled = true;
+        return placemark;
+    };
+
+    /**
+     * Hides all placemark inserted
+     */
+    MarkerCluster.prototype.hideAllSingle = function () {
+        for (var x = 0; x <= this.placemarks; x++) {
+            this.placemarks[x].enabled = false;
+        }
+    };
+
+    /**
+     * Hides all placemark at all zoom levels
+     */
+    MarkerCluster.prototype.hideAllLevels = function () {
+        for (var x = 0; x <= this.zoomLevels && x <= this.maxReached; x++) {
+            this.hideZoomLevel(x);
+        }
+    };
+
+    /**
+     * Hides the placemarks at a specified zoom level
+     * @param level: the level in which the placemark will be hidden
+     */
+    MarkerCluster.prototype.hideZoomLevel = function (level) {
+        if (this.levels[level]) {
+            for (var x = 0; x < this.levels[level].length; x++) {
+                this.hide(this.placemarks[this.levels[level][x]]);
+            }
+        }
+    };
+
+    /**
+     * Shows the placemarks at a specified zoom level
+     * @param level: the level in which the placemark will be shown
+     */
+    MarkerCluster.prototype.showZoomLevel = function (level) {
+        if (this.levels[level]) {
+            for (var x = 0; x < this.levels[level].length; x++) {
+                this.show(this.placemarks[this.levels[level][x]]);
+            }
+        }
+    };
+
+    /**
+     * Removes a placemark from the cluster
+     * @param placemark: The placemark that needs to be removed
+     */
+    MarkerCluster.prototype.removePlacemark = function (placemark) {
+        this.layer.removeRenderable(placemark);
+        this.placemarks.splice(this.placemarks.indexOf(placemark));
     };
 
     return MarkerCluster;
