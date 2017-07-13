@@ -1,7 +1,6 @@
 define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], function (supercluster, wwe) {
 
     var MarkerCluster = function (globe, options) {
-
         if (!options) {
             options = {
                 maxLevel: 9,
@@ -15,9 +14,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.placemarks = [];
         var name = options.name || "MarkerCluster";
         this.layer = new WorldWind.RenderableLayer(name);
-        if (globe) {
-            globe.addLayer(this.layer);
-        }
+
         this.globe = globe;
         this.controlLayer = options.controls;
         this.zoomLevel = 0;
@@ -26,156 +23,28 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.levels = [];
         this.maxReached = this.zoomLevels;
         this.minReached = 0;
+
+        if (globe) {
+            globe.addLayer(this.layer);
+            if (globe.navigator) {
+                this.bindNavigator();
+            }
+        }
         this.createZoomClusters(this.zoomLevels);
 
-
-        this.bindNavigator();
     };
 
     MarkerCluster.prototype.off = function () {
         this.layer.enabled = false;
     };
+
     MarkerCluster.prototype.on = function () {
         this.layer.enabled = true;
-    };
-    MarkerCluster.prototype.bindNavigator = function () {
-
-        var navigator = this.globe.navigator;
-        var LookAtNavigator = WorldWind.LookAtNavigator;
-        var self = this;
-
-
-        if (!navigator.clusters) {
-            navigator.clusters = {};
-        }
-        navigator.clusters[self.options.name] = self;
-
-        navigator.handleWheelEvent = function (event) {
-            LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
-            if (self.options.smooth) {
-                self.globe.goToAnimator.travelTime = 600;
-                if (!this.busy) {
-                    var normalizedDelta;
-                    if (event.deltaMode == WheelEvent.DOM_DELTA_PIXEL) {
-                        normalizedDelta = event.deltaY;
-                    } else if (event.deltaMode == WheelEvent.DOM_DELTA_LINE) {
-                        normalizedDelta = event.deltaY * 40;
-                    } else if (event.deltaMode == WheelEvent.DOM_DELTA_PAGE) {
-                        normalizedDelta = event.deltaY * 400;
-                    }
-                    normalizedDelta *= 5;
-                    var scale = 1 + (normalizedDelta / 1000);
-                    var nav = this;
-
-                    var lat = this.lookAtLocation.latitude;
-                    var lng = this.lookAtLocation.longitude;
-                    var alt = this.range * scale;
-                    var newPosition = new WorldWind.Position(lat, lng, alt);
-                    nav.busy = true;
-                    this.worldWindow.goTo(newPosition, function () {
-                        setTimeout(function () {
-                            nav.busy = false;
-                        }, 300)
-
-                    });
-                    this.applyLimits();
-                    this.worldWindow.redraw();
-                }
-            }
-            var range = this.range;
-
-            for (var key in navigator.clusters) {
-                navigator.clusters[key].handleClusterZoom(range)
-            }
-
-        };
-
-        navigator.handlePanOrDrag = function (event) {
-            LookAtNavigator.prototype.handlePanOrDrag.apply(this, arguments);
-            if (event.state == "ended") {//or changed
-                var range = this.range;
-                for (var key in navigator.clusters) {
-                    navigator.clusters[key].handleClusterZoom(range, true)
-                }
-            }
-        };
-
-        if (this.controlLayer) {
-            if (!this.controlLayer.clusters) {
-                this.controlLayer.clusters = {};
-            }
-            this.controlLayer.clusters[self.options.name] = self;
-
-            this.controlLayer.handleZoom = function (e, control) {
-                self.controlLayer.__proto__.handleZoom.apply(this, arguments);
-                if (e.type == "mousedown") {
-                    var range = this.wwd.navigator.range;
-                    for (var key in this.clusters) {
-                        this.clusters[key].handleClusterZoom(range)
-                    }
-                }
-            }
-
-            this.controlLayer.handlePan = function (e, control) {
-                self.controlLayer.__proto__.handlePan.apply(this, arguments);
-                if (e.type == "mousedown") {
-                    var range = this.wwd.navigator.range;
-                    for (var key in this.clusters) {
-                        this.clusters[key].handleClusterZoom(range, true)
-                    }
-                }
-
-            }
-        }
-    };
-
-    MarkerCluster.prototype.handleClusterZoom = function (range, pan) {
-        var self = this;
-        var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
-
-
-        var res;
-        // console.log(range);
-        if (range >= ranges[0]) {
-            res = 1;
-        } else if (range <= ranges[ranges.length - 1]) {
-            res = ranges.length;
-        } else {
-            for (var x = 0; x < ranges.length; x++) {
-                if (range <= ranges[x] && range >= ranges[x + 1]) {
-                    res = x + 1;
-                    break;
-                }
-            }
-        }
-        self.oldZoom = self.zoomLevel || 0;
-        self.zoomLevel = res;
-
-        //console.log(res);
-
-        if (res < self.minReached) {
-            self.hideAllLevels();
-            self.showZoomLevel(self.minReached);//possible overhead
-        } else if (res > self.maxReached) {
-            self.hideAllLevels();
-            self.showInRange(self.maxReached);
-            //self.showZoomLevel(self.maxReached);
-        } else {
-            if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
-                // self.showZoomLevel(res);
-                self.hideAllLevels();
-                self.showInRange(res);
-                self.globe.redraw();//dynamic
-            }
-
-            //self.hideOutside(res);
-
-
-        }
     };
 
     MarkerCluster.prototype.picking = function () {
         var self = this;
+        var wwd=this.globe;
         var highlightedItems = [];
         var handlePick = function (o) {
             var wwd = self.globe;
@@ -235,148 +104,6 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             wwd.addEventListener("mousemove", handlePick);
             wwd.addEventListener("click", handleClick);
         }
-    };
-
-    MarkerCluster.prototype.showInRange = function (level) {
-        var h = $("#canvasOne").height();
-        if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
-
-            var center = wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2));
-
-            center = center.objects[0].position;
-
-            var l = this.globe.navigator.range / Math.cos(Math.PI / 8);
-            var base = Math.sqrt(Math.pow(l, 2) - Math.pow(this.globe.navigator.range, 2));
-
-            base = base / 100000;
-            var minLat = center.latitude - base;
-            var maxLat = center.latitude + base;
-            var minLng = center.longitude - base;
-            var maxLng = center.longitude + base;
-            var buffer = (maxLat - minLat) / 10;
-            var bb = {
-                ix: minLat - buffer,
-                iy: minLng - buffer,
-                ax: maxLat + buffer,
-                ay: maxLng + buffer
-            };
-            for (var x = 0; x < this.levels[level].length; x++) {
-                var point = this.placemarks[this.levels[level][x]];
-                var p = point.position;
-
-                if (bb.ix <= p.latitude && p.latitude <= bb.ax && bb.iy <= p.longitude && p.longitude <= bb.ay) {
-                    this.show(point);
-                }
-            }
-        } else {
-            this.showZoomLevel(level);
-        }
-    };
-
-    MarkerCluster.prototype.generateCluster = function () {
-        this.hideAllSingle();
-        var myJSON = '{"type": "FeatureCollection","features":[';
-        newFeature = function (position, label) {
-            return '{"type": "Feature","properties": {"name":"' + label + '"},"geometry": {"type": "Point","coordinates": [' +
-                +position.longitude + ',' +
-                +position.latitude + ']}}';
-        };
-
-        this.placemarks.forEach(function (p, i) {
-            myJSON += newFeature(p.position, p.label) + ",";
-        });
-        myJSON = myJSON.slice(0, -1);
-        myJSON += ']}';
-
-        this.generateJSONCluster(JSON.parse(myJSON));
-        this.showZoomLevel(this.zoomLevel);
-    };
-
-    MarkerCluster.prototype.generateJSONCluster = function (geojson) {
-        var self = this;
-        cluster = supercluster({
-            log: true,
-            radius: 70,//should be dynamic
-            extent: 128,
-            maxZoom: self.zoomLevels
-        }).load(geojson.features);
-
-        this.cluster = cluster;
-        var end = this.zoomLevels;
-
-        for (var y = 0; y <= end; y++) {
-            var res = cluster.getClusters([-180, -90, 180, 90], y + 1);
-            var self = this;
-
-            if (this.minReached == 0 && res.length > 0) {
-                this.minReached = y;
-            }
-
-            if (res.length == geojson.features.length && y > 0 && res.length > 0 && res.length == this.levels[y - 1].length) {
-                this.maxReached = y - 1;
-                break;
-            } else {
-                var label, imageSource;
-
-                var max = 0;
-                var min = Infinity;
-                res.forEach(function (r) {
-                    max = Math.max(max, r.properties.point_count || 0);
-                    min = Math.min(max, r.properties.point_count || Infinity);
-                });
-                res.forEach(function (f) {
-                    if (f.properties.cluster) {
-
-                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
-                        var normalizedCount = (f.properties.point_count - min) / (max - min);
-
-                        switch (true) {
-                            case normalizedCount < 0.25:
-                                imageSource = "src/images/low.png";
-                                break;
-                            case normalizedCount < 0.55:
-                                imageSource = "src/images/medium.png";
-                                break;
-                            case normalizedCount < 0.75:
-                                imageSource = "src/images/high.png";
-                                break;
-                            default:
-                                imageSource = "src/images/vhigh.png";
-                                break;
-                        }
-
-                        label = "" + f.properties.point_count_abbreviated;
-                        var offsetText =
-                            new WorldWind.Offset(
-                                WorldWind.OFFSET_PIXELS, 5,
-                                WorldWind.OFFSET_PIXELS, -40);
-                        var imageScale = 0.5;
-                        var zoomLevel = y + 1;
-                    } else {
-                        label = f.properties.name;
-                        imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
-                        var zoomLevel = false;
-                    }
-                    var options = {
-                        imageSource: imageSource,
-                        enabled: false,
-                        label: label,
-                        offsetText: offsetText,
-                        imageScale: imageScale,
-                        zoomLevel: zoomLevel
-                    };
-                    var coords = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
-                    var p = self.newPlacemark(coords, null, options);
-
-                    self.add(p);
-                    self.addToZoom(y, p.index);
-                });
-            }
-        }
-        if (!this.maxReached) {
-            this.maxReached = end;
-        }
-        this.picking();
     };
 
     MarkerCluster.prototype.createZoomClusters = function (n) {
@@ -542,6 +269,274 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
     MarkerCluster.prototype.removePlacemark = function (placemark) {
         this.layer.removeRenderable(placemark);
         this.placemarks.splice(this.placemarks.indexOf(placemark));
+    };
+
+    MarkerCluster.prototype.bindNavigator = function () {
+
+        var navigator = this.globe.navigator;
+        var LookAtNavigator = WorldWind.LookAtNavigator;
+        var self = this;
+
+
+        if (!navigator.clusters) {
+            navigator.clusters = {};
+        }
+        navigator.clusters[self.options.name] = self;
+
+        navigator.handleWheelEvent = function (event) {
+            LookAtNavigator.prototype.handleWheelEvent.apply(this, arguments);
+            if (self.options.smooth) {
+                self.globe.goToAnimator.travelTime = 600;
+                if (!this.busy) {
+                    var normalizedDelta;
+                    if (event.deltaMode == WheelEvent.DOM_DELTA_PIXEL) {
+                        normalizedDelta = event.deltaY;
+                    } else if (event.deltaMode == WheelEvent.DOM_DELTA_LINE) {
+                        normalizedDelta = event.deltaY * 40;
+                    } else if (event.deltaMode == WheelEvent.DOM_DELTA_PAGE) {
+                        normalizedDelta = event.deltaY * 400;
+                    }
+                    normalizedDelta *= 5;
+                    var scale = 1 + (normalizedDelta / 1000);
+                    var nav = this;
+
+                    var lat = this.lookAtLocation.latitude;
+                    var lng = this.lookAtLocation.longitude;
+                    var alt = this.range * scale;
+                    var newPosition = new WorldWind.Position(lat, lng, alt);
+                    nav.busy = true;
+                    this.worldWindow.goTo(newPosition, function () {
+                        setTimeout(function () {
+                            nav.busy = false;
+                        }, 300)
+
+                    });
+                    this.applyLimits();
+                    this.worldWindow.redraw();
+                }
+            }
+            var range = this.range;
+
+            for (var key in navigator.clusters) {
+                navigator.clusters[key].handleClusterZoom(range)
+            }
+
+        };
+
+        navigator.handlePanOrDrag = function (event) {
+            LookAtNavigator.prototype.handlePanOrDrag.apply(this, arguments);
+            if (event.state == "ended") {//or changed
+                var range = this.range;
+                for (var key in navigator.clusters) {
+                    navigator.clusters[key].handleClusterZoom(range, true)
+                }
+            }
+        };
+
+        if (this.controlLayer) {
+            if (!this.controlLayer.clusters) {
+                this.controlLayer.clusters = {};
+            }
+            this.controlLayer.clusters[self.options.name] = self;
+
+            this.controlLayer.handleZoom = function (e, control) {
+                self.controlLayer.__proto__.handleZoom.apply(this, arguments);
+                if (e.type == "mousedown") {
+                    var range = this.wwd.navigator.range;
+                    for (var key in this.clusters) {
+                        this.clusters[key].handleClusterZoom(range)
+                    }
+                }
+            }
+
+            this.controlLayer.handlePan = function (e, control) {
+                self.controlLayer.__proto__.handlePan.apply(this, arguments);
+                if (e.type == "mousedown") {
+                    var range = this.wwd.navigator.range;
+                    for (var key in this.clusters) {
+                        this.clusters[key].handleClusterZoom(range, true)
+                    }
+                }
+
+            }
+        }
+    };
+
+    MarkerCluster.prototype.handleClusterZoom = function (range, pan) {
+        var self = this;
+        var ranges = [100000000, 5294648, 4099739, 2032591, 1650505, 800762, 500000, 100000, 7000];
+
+        var res;
+        if (range >= ranges[0]) {
+            res = 1;
+        } else if (range <= ranges[ranges.length - 1]) {
+            res = ranges.length;
+        } else {
+            for (var x = 0; x < ranges.length; x++) {
+                if (range <= ranges[x] && range >= ranges[x + 1]) {
+                    res = x + 1;
+                    break;
+                }
+            }
+        }
+        self.oldZoom = self.zoomLevel || 0;
+        self.zoomLevel = res;
+
+        if (res < self.minReached) {
+            self.hideAllLevels();
+            self.showZoomLevel(self.minReached);//possible overhead
+        } else if (res > self.maxReached) {
+            self.hideAllLevels();
+            self.showInRange(self.maxReached);
+        } else {
+            if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
+                self.hideAllLevels();
+                self.showInRange(res);
+                self.globe.redraw();//dynamic
+            }
+        }
+    };
+
+    MarkerCluster.prototype.showInRange = function (level) {
+        var h = $("#canvasOne").height();
+        if (wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2)).objects && wwd.pickTerrain(new WorldWind.Vec3(0, 0, 0)).objects [0]) {
+
+            var center = wwd.pickTerrain(new WorldWind.Vec2(h / 2, h / 2));
+
+            center = center.objects[0].position;
+
+            var l = this.globe.navigator.range / Math.cos(Math.PI / 8);
+            var base = Math.sqrt(Math.pow(l, 2) - Math.pow(this.globe.navigator.range, 2));
+
+            base = base / 100000;
+            var minLat = center.latitude - base;
+            var maxLat = center.latitude + base;
+            var minLng = center.longitude - base;
+            var maxLng = center.longitude + base;
+            var buffer = (maxLat - minLat) / 10;
+            var bb = {
+                ix: minLat - buffer,
+                iy: minLng - buffer,
+                ax: maxLat + buffer,
+                ay: maxLng + buffer
+            };
+            for (var x = 0; x < this.levels[level].length; x++) {
+                var point = this.placemarks[this.levels[level][x]];
+                var p = point.position;
+
+                if (bb.ix <= p.latitude && p.latitude <= bb.ax && bb.iy <= p.longitude && p.longitude <= bb.ay) {
+                    this.show(point);
+                }
+            }
+        } else {
+            this.showZoomLevel(level);
+        }
+    };
+
+    MarkerCluster.prototype.generateCluster = function () {
+        this.hideAllSingle();
+        var myJSON = '{"type": "FeatureCollection","features":[';
+        newFeature = function (position, label) {
+            return '{"type": "Feature","properties": {"name":"' + label + '"},"geometry": {"type": "Point","coordinates": [' +
+                +position.longitude + ',' +
+                +position.latitude + ']}}';
+        };
+
+        this.placemarks.forEach(function (p, i) {
+            myJSON += newFeature(p.position, p.label) + ",";
+        });
+        myJSON = myJSON.slice(0, -1);
+        myJSON += ']}';
+
+        this.generateJSONCluster(JSON.parse(myJSON));
+        this.showZoomLevel(this.zoomLevel);
+    };
+
+    MarkerCluster.prototype.generateJSONCluster = function (geojson) {
+        var self = this;
+        cluster = supercluster({
+            log: true,
+            radius: 70,//should be dynamic
+            extent: 128,
+            maxZoom: self.zoomLevels
+        }).load(geojson.features);
+
+        this.cluster = cluster;
+        var end = this.zoomLevels;
+
+        for (var y = 0; y <= end; y++) {
+            var res = cluster.getClusters([-180, -90, 180, 90], y + 1);
+            var self = this;
+
+            if (this.minReached == 0 && res.length > 0) {
+                this.minReached = y;
+            }
+
+            if (res.length == geojson.features.length && y > 0 && res.length > 0 && res.length == this.levels[y - 1].length) {
+                this.maxReached = y - 1;
+                break;
+            } else {
+                var label, imageSource;
+
+                var max = 0;
+                var min = Infinity;
+                res.forEach(function (r) {
+                    max = Math.max(max, r.properties.point_count || 0);
+                    min = Math.min(max, r.properties.point_count || Infinity);
+                });
+                res.forEach(function (f) {
+                    if (f.properties.cluster) {
+
+                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
+                        var normalizedCount = (f.properties.point_count - min) / (max - min);
+
+                        switch (true) {
+                            case normalizedCount < 0.25:
+                                imageSource = "src/images/low.png";
+                                break;
+                            case normalizedCount < 0.55:
+                                imageSource = "src/images/medium.png";
+                                break;
+                            case normalizedCount < 0.75:
+                                imageSource = "src/images/high.png";
+                                break;
+                            default:
+                                imageSource = "src/images/vhigh.png";
+                                break;
+                        }
+
+                        label = "" + f.properties.point_count_abbreviated;
+                        var offsetText =
+                            new WorldWind.Offset(
+                                WorldWind.OFFSET_PIXELS, 5,
+                                WorldWind.OFFSET_PIXELS, -40);
+                        var imageScale = 0.5;
+                        var zoomLevel = y + 1;
+                    } else {
+                        label = f.properties.name;
+                        imageSource = WorldWind.configuration.baseUrl + "images/pushpins/push-pin-red.png";
+                        var zoomLevel = false;
+                    }
+                    var options = {
+                        imageSource: imageSource,
+                        enabled: false,
+                        label: label,
+                        offsetText: offsetText,
+                        imageScale: imageScale,
+                        zoomLevel: zoomLevel
+                    };
+                    var coords = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+                    var p = self.newPlacemark(coords, null, options);
+
+                    self.add(p);
+                    self.addToZoom(y, p.index);
+                });
+            }
+        }
+        if (!this.maxReached) {
+            this.maxReached = end;
+        }
+        this.picking();
     };
 
     return MarkerCluster;
