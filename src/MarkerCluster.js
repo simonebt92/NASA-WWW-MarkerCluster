@@ -181,7 +181,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
             self.hideAllLevels();
             self.showInRange(self.maxReached);
         } else {
-            if (self.levels[res].length != self.levels[self.oldZoom].length || pan) {
+            if (self.levels[self.oldZoom] && self.levels[res].length != self.levels[self.oldZoom].length || pan) {
                 self.hideAllLevels();
                 self.showInRange(res);
                 self.globe.redraw();
