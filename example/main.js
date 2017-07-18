@@ -25,7 +25,6 @@ requirejs(['../libraries/WorldWind/WorldWind',
             wwd.addLayer(layers[l].layer);
         }
         wwd.addLayer(viewControlsLayer);
-
         
 
         markerClusterUSCities = new MarkerCluster(wwd, {name: "US Cities", controls: viewControlsLayer, maxLevel: 7});
