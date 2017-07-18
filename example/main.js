@@ -26,41 +26,7 @@ requirejs(['../libraries/WorldWind/WorldWind',
         }
         wwd.addLayer(viewControlsLayer);
 
-        /*
-         //create a cluster
-         markerCluster = new MarkerCluster(wwd);
-
-         //create a placemark
-         var placemark = markerCluster.newPlacemark([37, 15]);
-         markerCluster.add(placemark);
-
-         //hide a placemark
-         //markerCluster.hide(placemark);
-
-         //show a placemark
-         //markerCluster.show(placemark);
-
-         //create multiple placemark
-         var placemarks = markerCluster.newPlacemark([[37, 14], [36, 15]]);
-         markerCluster.add(placemarks);
-         markerCluster.generateCluster();
-         */
-
-
-        /*
-
-         var markerClusterGeoJSON = new MarkerCluster(wwd, {name: "GeoJSON Places", controls: viewControlsLayer});
-         markerClusterGeoJSON.off();
-         getJSON('example/places.json', function (geojson) {
-         geojson.features.forEach(function (f) {
-         var coords = f.geometry.coordinates;
-         var p = markerClusterGeoJSON.newPlacemark([coords[0], coords[1]], null, {enabled: false});
-         markerClusterGeoJSON.add(p);
-         });
-         markerClusterGeoJSON.generateCluster();
-
-         });
-         */
+        
 
         markerClusterUSCities = new MarkerCluster(wwd, {name: "US Cities", controls: viewControlsLayer, maxLevel: 7});
 
