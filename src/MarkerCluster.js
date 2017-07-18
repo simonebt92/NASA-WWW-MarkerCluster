@@ -13,7 +13,9 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 maxLevel: 9,
                 smooth: false,
                 name: "MarkerCluster",
-                maxCount:3000
+                maxCount: 3000,
+                clusterSources: null,
+                attributeColor: null,
             }
         }
 
@@ -26,7 +28,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.globe = globe;
         this.controlLayer = options.controls;
         this.zoomLevel = 0;
-        this.maxCount= options.maxCount || 1000;
+        this.maxCount = options.maxCount || 1000;
         this.smooth = options.smooth || false;
         this.zoomLevels = options.maxLevel || 9;
         this.levels = [];
@@ -243,7 +245,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                             self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
                             self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
                             self.globe.navigator.range /= 2;
-                            self.handleClusterZoom(self.globe.navigator.range,true);
+                            self.handleClusterZoom(self.globe.navigator.range, true);
                             break;
                         }
                     }
@@ -286,13 +288,13 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 ax: maxLat + buffer,
                 ay: maxLng + buffer
             };
-            var count=0;
+            var count = 0;
             for (var x = 0; x < this.levels[level].length; x++) {
                 var point = this.placemarks[this.levels[level][x]];
                 var p = point.position;
 
                 if (bb.ix <= p.latitude && p.latitude <= bb.ax && bb.iy <= p.longitude && p.longitude <= bb.ay) {
-                    if(count>=this.maxCount){
+                    if (count >= this.maxCount) {
                         return;
                     }
                     this.show(point);
@@ -365,21 +367,33 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 res.forEach(function (f) {
                     if (f.properties.cluster) {
 
-                        //f.geometry.coordinates.altitude=Math.pow(1,10*y);
-                        var normalizedCount = (f.properties.point_count - min) / (max - min);
+                        var normalizedCount;
+                        if (self.options.attributeColor) {
+                            normalizedCount = self.options.attributeColor;
+                        } else {
+                            normalizedCount = (f.properties.point_count - min) / (max - min);
+                        }
+                        var sources;
+                        if (self.options.clusterSources) {
+                            sources = self.options.clusterSources;
+                        } else {
+                            sources = ["src/images/low.png", "src/images/medium.png",
+                                "src/images/high.png", "src/images/vhigh.png"];
+                        }
+
 
                         switch (true) {
                             case normalizedCount < 0.25:
-                                imageSource = "src/images/low.png";
+                                imageSource = sources[0];
                                 break;
                             case normalizedCount < 0.55:
-                                imageSource = "src/images/medium.png";
+                                imageSource = sources[1];
                                 break;
                             case normalizedCount < 0.75:
-                                imageSource = "src/images/high.png";
+                                imageSource = sources[2];
                                 break;
                             default:
-                                imageSource = "src/images/vhigh.png";
+                                imageSource = sources[3];
                                 break;
                         }
 
