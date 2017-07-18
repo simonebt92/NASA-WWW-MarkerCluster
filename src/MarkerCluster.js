@@ -245,7 +245,11 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                             self.globe.navigator.lookAtLocation.latitude = pickList.objects[p].userObject.position.latitude;
                             self.globe.navigator.lookAtLocation.longitude = pickList.objects[p].userObject.position.longitude;
                             self.globe.navigator.range /= 2;
-                            self.handleClusterZoom(self.globe.navigator.range, true);
+                            for (var key in self.globe.navigator.clusters) {
+                                self.globe.navigator.clusters[key].handleClusterZoom(self.globe.navigator.range);
+                                //self.handleClusterZoom(self.globe.navigator.range, true);
+                            }
+
                             break;
                         }
                     }
