@@ -265,8 +265,9 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
      * @param level: Integer. Current level of the camera (matched clusters levels)
      */
     MarkerCluster.prototype.showInRange = function (level) {
-        var h = $("#canvasOne").height();
-        var w = $("#canvasOne").width();
+        var h = document.getElementById("canvasOne").height;
+        var w = document.getElementById("canvasOne").width;
+        var wwd = this.globe;
         if (wwd.pickTerrain(new WorldWind.Vec2(w / 2, h / 2)).objects) {
 
             var center = wwd.pickTerrain(new WorldWind.Vec2(w / 2, h / 2));

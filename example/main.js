@@ -1,16 +1,14 @@
-var wwd;
 var markerClusterUSCities;
-var cluster;
-var layerManager;
 requirejs(['../libraries/WorldWind/WorldWind',
-        'js/LayerManager', '../src/MarkerCluster'],
+        '../example/js/LayerManager', '../src/MarkerCluster'],
     function (ww,
               LayerManager, MarkerCluster) {
         "use strict";
 
+
         WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
-        WorldWind.configuration.baseUrl = "libraries/WorldWind/"
-        wwd = new WorldWind.WorldWindow("canvasOne");
+        WorldWind.configuration.baseUrl = "libraries/WorldWind/";
+        var wwd = new WorldWind.WorldWindow("canvasOne");
 
         var layers = [
             {layer: new WorldWind.BingAerialWithLabelsLayer(null), enabled: true},
@@ -62,7 +60,11 @@ requirejs(['../libraries/WorldWind/WorldWind',
          });
          */
 
-        markerClusterUSCities = new MarkerCluster(wwd, {name: "US Cities", controls: viewControlsLayer, maxLevel: 7});
+        markerClusterUSCities = new MarkerCluster(wwd, {
+            name: "US Cities",
+            controls: viewControlsLayer,
+            maxLevel: 7
+        });
 
         getJSON('example/usCities.json', function (results) {
             results.forEach(function (city) {
@@ -88,7 +90,8 @@ requirejs(['../libraries/WorldWind/WorldWind',
         markerClusterAllGlobe.generateCluster();
         markerClusterAllGlobe.off();
 
-        layerManager = new LayerManager(wwd);
+        var layerManager = new LayerManager(wwd);
+
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
