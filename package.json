@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Marker Cluster for NASA WebWorldWind",
   "directories": {
-    "example": "examples",
+    "example": "example",
     "test": "test"
   },
   "scripts": {
@@ -25,5 +25,17 @@
     "karma-jasmine": "^0.3.7",
     "karma-requirejs": "^0.2.4",
     "requirejs": "^2.1.22"
-  }
+  },
+  "main": "index.js",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simonebt92/NASA-WWW-MarkerCluster.git"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/simonebt92/NASA-WWW-MarkerCluster/issues"
+  },
+  "homepage": "https://github.com/simonebt92/NASA-WWW-MarkerCluster#readme"
 }

@@ -1,21 +1,25 @@
-var wwd;
-var markerClusterUSCities;
-var cluster;
-var layerManager;
+requirejs.config({
+    baseUrl: 'src',
+    paths: {
+        bootstrap: '../example/js/bootstrap.min',
+        jquery: '../example/js/jquery.min'
+    }
+});
+
 requirejs(['../libraries/WorldWind/WorldWind',
-        'js/LayerManager', '../src/MarkerCluster'],
+        '../example/js/LayerManager', '../src/MarkerCluster', 'jquery'],
     function (ww,
-              LayerManager, MarkerCluster) {
+              LayerManager, MarkerCluster, $) {
         "use strict";
 
         WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
         WorldWind.configuration.baseUrl = "libraries/WorldWind/"
-        wwd = new WorldWind.WorldWindow("canvasOne");
+        var wwd = new WorldWind.WorldWindow("canvasOne");
 
         var layers = [
             {layer: new WorldWind.BingAerialWithLabelsLayer(null), enabled: true},
             {layer: new WorldWind.CompassLayer(), enabled: true},
-            {layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: true},
+            {layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: true}
         ];
         var viewControlsLayer = new WorldWind.ViewControlsLayer(wwd);
 
@@ -25,9 +29,13 @@ requirejs(['../libraries/WorldWind/WorldWind',
             wwd.addLayer(layers[l].layer);
         }
         wwd.addLayer(viewControlsLayer);
-        
 
-        markerClusterUSCities = new MarkerCluster(wwd, {name: "US Cities", controls: viewControlsLayer, maxLevel: 7});
+
+        var markerClusterUSCities = new MarkerCluster(wwd, {
+            name: "US Cities",
+            controls: viewControlsLayer,
+            maxLevel: 7
+        });
 
         getJSON('example/usCities.json', function (results) {
             results.forEach(function (city) {
@@ -53,7 +61,7 @@ requirejs(['../libraries/WorldWind/WorldWind',
         markerClusterAllGlobe.generateCluster();
         markerClusterAllGlobe.off();
 
-        layerManager = new LayerManager(wwd);
+        var layerManager = new LayerManager(wwd);
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
