@@ -51,16 +51,6 @@ requirejs(['../libraries/WorldWind/WorldWind',
         });
 
 
-        var markerClusterAllGlobe = new MarkerCluster(wwd, {name: "Many Coords layer", controls: viewControlsLayer});
-        for (var x = -90; x < 90; x = x + 1) {
-            for (var y = -90; y < 90; y = y + 1) {
-                var p = markerClusterAllGlobe.newPlacemark([x, y], null, {label: x + "_" + y});
-                markerClusterAllGlobe.add(p);
-            }
-        }
-        markerClusterAllGlobe.generateCluster();
-        markerClusterAllGlobe.off();
-
         var layerManager = new LayerManager(wwd);
         function getJSON(url, callback) {
             var xhr = new XMLHttpRequest();
