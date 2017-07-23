@@ -45,51 +45,49 @@ requirejs(['../libraries/WorldWind/WorldWind',
          */
 
 
-        /*
-
-         var markerClusterGeoJSON = new MarkerCluster(wwd, {name: "GeoJSON Places", controls: viewControlsLayer});
-         markerClusterGeoJSON.off();
-         getJSON('example/places.json', function (geojson) {
-         geojson.features.forEach(function (f) {
-         var coords = f.geometry.coordinates;
-         var p = markerClusterGeoJSON.newPlacemark([coords[0], coords[1]], null, {enabled: false});
-         markerClusterGeoJSON.add(p);
-         });
-         markerClusterGeoJSON.generateCluster();
-
-         });
-         */
-
         markerClusterUSCities = new MarkerCluster(wwd, {
             name: "US Cities",
             controls: viewControlsLayer,
             maxLevel: 7
         });
 
-        getJSON('example/usCities.json', function (results) {
-            results.forEach(function (city) {
-                var p = markerClusterUSCities.newPlacemark(
-                    [city.latitude, city.longitude],
-                    null,
-                    {label: city.city}
-                );
-                markerClusterUSCities.add(p);
-            });
-            markerClusterUSCities.generateCluster();
-
+        getJSON('example/usCities.geojson', function (results) {
+            markerClusterUSCities.generateJSONCluster(results);
         });
 
+        /*
+         var markerClusterAllGlobe = new MarkerCluster(wwd, {name: "Many Coords layer", controls: viewControlsLayer});
+         for (var x = -90; x < 90; x = x + 1) {
+         for (var y = -90; y < 90; y = y + 1) {
+         var p = markerClusterAllGlobe.newPlacemark([x, y], null, {label: x + "_" + y});
+         markerClusterAllGlobe.add(p);
+         }
+         }
+         markerClusterAllGlobe.generateCluster();
+         markerClusterAllGlobe.off();
+         */
+        /*
+         markerClusterUSCities = new MarkerCluster(wwd, {
+         name: "US Cities",
+         controls: viewControlsLayer,
+         maxLevel: 7
+         });
 
-        var markerClusterAllGlobe = new MarkerCluster(wwd, {name: "Many Coords layer", controls: viewControlsLayer});
-        for (var x = -90; x < 90; x = x + 1) {
-            for (var y = -90; y < 90; y = y + 1) {
-                var p = markerClusterAllGlobe.newPlacemark([x, y], null, {label: x + "_" + y});
-                markerClusterAllGlobe.add(p);
-            }
-        }
-        markerClusterAllGlobe.generateCluster();
-        markerClusterAllGlobe.off();
+         getJSON('example/usCities.json', function (results) {
+         results.forEach(function (city) {
+         var p = markerClusterUSCities.newPlacemark(
+         [city.latitude, city.longitude],
+         null,
+         {label: city.city}
+         );
+         markerClusterUSCities.add(p);
+         });
+         markerClusterUSCities.generateCluster();
 
+         });
+
+
+         */
         var layerManager = new LayerManager(wwd);
 
         function getJSON(url, callback) {
@@ -104,5 +102,6 @@ requirejs(['../libraries/WorldWind/WorldWind',
             };
             xhr.send();
         }
-    });
+    })
+;
 
