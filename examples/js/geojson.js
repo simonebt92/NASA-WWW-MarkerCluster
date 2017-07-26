@@ -13,7 +13,7 @@ requirejs(['../libraries/WorldWind/WorldWind',
         var layers = [
             {layer: new WorldWind.BingAerialWithLabelsLayer(null), enabled: true},
             {layer: new WorldWind.CompassLayer(), enabled: true},
-            {layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: true},
+            {layer: new WorldWind.CoordinatesDisplayLayer(wwd), enabled: true}
         ];
         var viewControlsLayer = new WorldWind.ViewControlsLayer(wwd);
 
@@ -51,7 +51,7 @@ requirejs(['../libraries/WorldWind/WorldWind',
             maxLevel: 7
         });
 
-        getJSON('example/usCities.geojson', function (results) {
+        getJSON('data/usCities.geojson', function (results) {
             markerClusterUSCities.generateJSONCluster(results);
         });
 
