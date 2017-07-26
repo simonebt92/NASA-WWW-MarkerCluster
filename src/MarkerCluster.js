@@ -16,6 +16,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                 maxCount: 3000,
                 clusterSources: null,
                 attributeColor: null,
+                radius: 70
             }
         }
 
@@ -29,9 +30,13 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         this.controlLayer = options.controls;
         this.navigator = options.navigator;
         this.zoomLevel = 0;
+
+        //Predefined options
         this.maxCount = options.maxCount || 1000;
         this.smooth = options.smooth || false;
         this.zoomLevels = options.maxLevel || 9;
+        this.radius = options.radius || 70;
+
         this.levels = [];
         this.maxReached = this.zoomLevels;
         this.minReached = 0;
@@ -375,7 +380,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
         var self = this;
         cluster = supercluster({
             log: true,
-            radius: 70,//should be dynamic
+            radius: self.radius,
             extent: 128,
             maxZoom: self.zoomLevels
         }).load(geojson.features);

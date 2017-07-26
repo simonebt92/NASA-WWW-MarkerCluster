@@ -1,4 +1,3 @@
-var markerClusterUSCities;
 requirejs(['../libraries/WorldWind/WorldWind',
         '../example/js/LayerManager', '../src/MarkerCluster'],
     function (ww,
@@ -44,16 +43,34 @@ requirejs(['../libraries/WorldWind/WorldWind',
          markerCluster.generateCluster();
          */
 
+        $("#insertButton").click(function () {
+            var maxCount = Number($("#maxCount").val());
+            var maxLevel = Number($("#maxLevel").val());
+            var radius = Number($("#radius").val());
+            var url = $("#url").val();
+            
+            var markerCluster = new MarkerCluster(wwd, {
+                name: url,
+                controls: viewControlsLayer,
+                maxLevel: maxLevel,
+                maxCount: maxCount,
+                radius: radius,
+            });
+            getJSON(url, function (results) {
+                markerCluster.generateJSONCluster(results);
+                layerManager.synchronizeLayerList();
+                alert("Clusters are ready!")
+            });
 
-        markerClusterUSCities = new MarkerCluster(wwd, {
-            name: "US Cities",
-            controls: viewControlsLayer,
-            maxLevel: 7
         });
 
+<<<<<<< HEAD:examples/js/geojson.js
         getJSON('data/usCities.geojson', function (results) {
             markerClusterUSCities.generateJSONCluster(results);
         });
+=======
+
+>>>>>>> 02e2937db3007f374687c009b9727c6a3ecedea7:example/main.js
 
         /*
          var markerClusterAllGlobe = new MarkerCluster(wwd, {name: "Many Coords layer", controls: viewControlsLayer});
