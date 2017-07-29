@@ -1,13 +1,12 @@
-var markerClusterUSCities;
-requirejs(['../libraries/WorldWind/WorldWind',
-        '../example/js/LayerManager', '../src/MarkerCluster'],
+requirejs(['../../libraries/WorldWind/WorldWind',
+        './LayerManager', '../../src/MarkerCluster'],
     function (ww,
               LayerManager, MarkerCluster) {
         "use strict";
 
 
         WorldWind.Logger.setLoggingLevel(WorldWind.Logger.LEVEL_WARNING);
-        WorldWind.configuration.baseUrl = "libraries/WorldWind/";
+        WorldWind.configuration.baseUrl = "../libraries/WorldWind/";
         var wwd = new WorldWind.WorldWindow("canvasOne");
 
         var layers = [
@@ -22,25 +21,37 @@ requirejs(['../libraries/WorldWind/WorldWind',
             layers[l].layer.detailControl = 1;
             wwd.addLayer(layers[l].layer);
         }
-        wwd.addLayer(viewControlsLayer);
 
-        markerClusterUSCities = new MarkerCluster(wwd, {
-            name: "US Cities",
-            controls: viewControlsLayer,
-            maxLevel: 7
-        });
 
-        getJSON('data/usCities.json', function (results) {
-            results.forEach(function (city) {
-                var p = markerClusterUSCities.newPlacemark(
-                    [city.latitude, city.longitude],
-                    null,
-                    {label: city.city}
-                );
-                markerClusterUSCities.add(p);
+        $("#insertButton").click(function () {
+            var maxCount = Number($("#maxCount").val());
+            var maxLevel = Number($("#maxLevel").val());
+            var radius = Number($("#radius").val());
+            var url = $("#url").val();
+
+            var markerCluster = new MarkerCluster(wwd, {
+                name: url,
+                controls: viewControlsLayer,
+                maxLevel: maxLevel,
+                maxCount: maxCount,
+                radius: radius,
             });
-            markerClusterUSCities.generateCluster();
+
+            getJSON('data/usCities.json', function (results) {
+                results.forEach(function (city) {
+                    var p = markerCluster.newPlacemark(
+                        [city.latitude, city.longitude],
+                        null,
+                        {label: city.city}
+                    );
+                    markerCluster.add(p);
+                });
+                markerCluster.generateCluster();
+            });
+
+
         });
+        wwd.addLayer(viewControlsLayer);
 
 
         var layerManager = new LayerManager(wwd);

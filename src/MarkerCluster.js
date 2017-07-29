@@ -421,8 +421,8 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
                         if (self.options.clusterSources) {
                             sources = self.options.clusterSources;
                         } else {
-                            sources = ["src/images/low.png", "src/images/medium.png",
-                                "src/images/high.png", "src/images/vhigh.png"];
+                            sources = ["../src/images/low.png", "../src/images/medium.png",
+                                "../src/images/high.png", "../src/images/vhigh.png"];
                         }
 
 

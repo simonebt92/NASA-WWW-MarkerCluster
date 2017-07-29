@@ -28,22 +28,25 @@ requirejs(['../../libraries/WorldWind/WorldWind',
             var maxCount = Number($("#maxCount").val());
             var maxLevel = Number($("#maxLevel").val());
             var radius = Number($("#radius").val());
-            var url = $("#url").val();
             
             var markerCluster = new MarkerCluster(wwd, {
-                name: url,
                 controls: viewControlsLayer,
                 maxLevel: maxLevel,
                 maxCount: maxCount,
-                radius: radius,
-            });
-            getJSON(url, function (results) {
-                markerCluster.generateJSONCluster(results);
-                layerManager.synchronizeLayerList();
-                alert("Clusters are ready!")
+                radius: radius
             });
 
+            for (var x = -90; x < 90; x = x + 1) {
+                for (var y = -180; y < 180; y = y + 1) {
+                    var p = markerCluster.newPlacemark([x, y], null, {label: x + "_" + y});
+                    markerCluster.add(p);
+                }
+            }
+            markerCluster.generateCluster();
+            layerManager.synchronizeLayerList();
+
         });
+
 
         var layerManager = new LayerManager(wwd);
 
