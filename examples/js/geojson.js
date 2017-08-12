@@ -35,7 +35,7 @@ requirejs(['../../libraries/WorldWind/WorldWind',
                 controls: viewControlsLayer,
                 maxLevel: maxLevel,
                 maxCount: maxCount,
-                radius: radius,
+                radius: radius
             });
             getJSON(url, function (results) {
                 markerCluster.generateJSONCluster(results);

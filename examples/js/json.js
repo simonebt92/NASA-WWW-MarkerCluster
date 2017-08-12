@@ -34,7 +34,7 @@ requirejs(['../../libraries/WorldWind/WorldWind',
                 controls: viewControlsLayer,
                 maxLevel: maxLevel,
                 maxCount: maxCount,
-                radius: radius,
+                radius: radius
             });
 
             getJSON('data/usCities.json', function (results) {
