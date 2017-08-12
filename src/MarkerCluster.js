@@ -637,7 +637,7 @@ define(['../libraries/supercluster.min', '../libraries/WorldWind/WorldWind'], fu
      * Hides all placemark inserted
      */
     MarkerCluster.prototype.hideAllSingle = function () {
-        for (var x = 0; x <= this.placemarks; x++) {
+        for (var x = 0; x < this.placemarks.length; x++) {
             this.placemarks[x].enabled = false;
         }
     };
