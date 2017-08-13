@@ -94,7 +94,7 @@ define(['src/MarkerCluster', 'libraries/WorldWind/WorldWind'], function (MarkerC
         it('hide', function () {
             var markerCluster = new MarkerCluster();
             var index = 5;
-            var placemark = {index: index,enabled:true};
+            var placemark = {index: index, enabled: true};
 
             markerCluster.placemarks = [];
             markerCluster.placemarks[index] = placemark;
@@ -107,7 +107,7 @@ define(['src/MarkerCluster', 'libraries/WorldWind/WorldWind'], function (MarkerC
         it('show', function () {
             var markerCluster = new MarkerCluster();
             var index = 5;
-            var placemark = {index: index,enabled:false};
+            var placemark = {index: index, enabled: false};
 
             markerCluster.placemarks = [];
             markerCluster.placemarks[index] = placemark;
@@ -116,5 +116,62 @@ define(['src/MarkerCluster', 'libraries/WorldWind/WorldWind'], function (MarkerC
             expect(placemark.enabled).toEqual(true);
 
         });
+
+        it('hideZoomLevel', function () {
+            var markerCluster = new MarkerCluster();
+
+            var level = 0;
+            markerCluster.levels[level]=[1];
+
+            spyOn(markerCluster, 'hide');
+            markerCluster.hideZoomLevel(level);
+
+            expect(markerCluster.hide).toHaveBeenCalled();
+
+        });
+
+        it('showZoomLeel', function () {
+            var markerCluster = new MarkerCluster();
+
+            var level = 0;
+            markerCluster.levels[level]=[1];
+
+            spyOn(markerCluster, 'show');
+            markerCluster.showZoomLevel(level);
+
+            expect(markerCluster.show).toHaveBeenCalled();
+
+        });
+
+        it('hideAllLevels', function () {
+            var markerCluster = new MarkerCluster();
+
+            markerCluster.zoomLevels=5;
+            markerCluster.maxReached=5;
+
+            spyOn(markerCluster, 'hideZoomLevel');
+            markerCluster.hideAllLevels();
+
+            expect(markerCluster.hideZoomLevel).toHaveBeenCalled();
+
+        });
+
+        it('removePlacemark', function () {
+            var markerCluster = new MarkerCluster();
+            var placemark=1;
+
+
+            var layer = jasmine.createSpyObj('layer', ['removeRenderable']);
+            markerCluster.layer=layer;
+
+            markerCluster.placemarks=[placemark];
+            spyOn(markerCluster.placemarks, 'splice');
+
+            markerCluster.removePlacemark(placemark);
+
+            expect(layer.removeRenderable).toHaveBeenCalled();
+            expect(markerCluster.placemarks.splice).toHaveBeenCalled();
+        });
+
     });
 });
